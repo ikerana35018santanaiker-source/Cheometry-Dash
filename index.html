@@ -700,6 +700,7 @@
 
         function createObstacles() {
             const colors = [0xffd93d, 0x6bcf7f, 0xff6b9d, 0x4ecdc4];
+            const minDistance = 4; // Distancia mínima entre obstáculos (en unidades 3D)
             
             for (let i = 0; i < currentLevel.obstacles; i++) {
                 const type = Math.random() > 0.5 ? 'spike' : 'block';
@@ -718,7 +719,11 @@
                     obstacle.position.y = height / 2;
                 }
                 
-                obstacle.position.x = 5 + i * (levelLength / currentLevel.obstacles);
+                // Calcular distancia asegurando el mínimo
+                const baseDistance = levelLength / currentLevel.obstacles;
+                const finalDistance = Math.max(baseDistance, minDistance);
+                
+                obstacle.position.x = 5 + i * finalDistance;
                 obstacle.position.y = obstacle.position.y;
                 obstacle.position.z = 0;
                 obstacle.castShadow = true;
@@ -762,14 +767,14 @@
                     // Saltar automáticamente si se mantiene presionado
                     if (isMouseDown || isKeyDown) {
                         isJumping = true;
-                        playerVelocity = 0.25;
+                        playerVelocity = 0.35;
                     }
                 }
             } else {
                 // Iniciar salto si se presiona y está en el suelo
                 if ((isMouseDown || isKeyDown) && player.position.y <= 0.5) {
                     isJumping = true;
-                    playerVelocity = 0.25;
+                    playerVelocity = 0.35;
                 }
             }
 
