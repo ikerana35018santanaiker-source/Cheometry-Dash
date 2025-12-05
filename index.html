@@ -476,25 +476,67 @@
     <script>
         // DATOS DE NIVELES
         const levels = [
-            { name: "Stereo Madness +", difficulty: "😊", coins: 0, progress: 0, speed: 0.15, obstacles: 15 },
-            { name: "Pack on Pack", difficulty: "😊", coins: 0, progress: 0, speed: 0.17, obstacles: 18 },
-            { name: "Totangeist", difficulty: "😐", coins: 0, progress: 0, speed: 0.19, obstacles: 22 },
-            { name: "Ply out", difficulty: "😐", coins: 0, progress: 0, speed: 0.21, obstacles: 25 },
-            { name: "Sermón after Sermón", difficulty: "😐", coins: 0, progress: 0, speed: 0.23, obstacles: 28 },
-            { name: "Cant go out", difficulty: "😠", coins: 0, progress: 0, speed: 0.25, obstacles: 32 },
-            { name: "Toca Césped", difficulty: "😠", coins: 0, progress: 0, speed: 0.27, obstacles: 35 },
-            { name: "Time No Machine", difficulty: "😠", coins: 0, progress: 0, speed: 0.29, obstacles: 38 },
-            { name: "Aquí no hay Cycles", difficulty: "😱", coins: 0, progress: 0, speed: 0.31, obstacles: 42 },
-            { name: "XNotStep", difficulty: "😱", coins: 0, progress: 0, speed: 0.33, obstacles: 45 },
-            { name: "PutterFunk", difficulty: "😱", coins: 0, progress: 0, speed: 0.35, obstacles: 48 },
-            { name: "Theory of the Big Bang", difficulty: "😱", coins: 0, progress: 0, speed: 0.37, obstacles: 52 },
-            { name: "Iker Adventures", difficulty: "👹", coins: 0, progress: 0, speed: 0.39, obstacles: 55 },
-            { name: "Electropinasticks", difficulty: "👹", coins: 0, progress: 0, speed: 0.41, obstacles: 58 },
-            { name: "FingerPam", difficulty: "👹", coins: 0, progress: 0, speed: 0.43, obstacles: 62 },
-            { name: "Dash", difficulty: "👹", coins: 0, progress: 0, speed: 0.5, obstacles: 70 }
+            { name: "Stereo Madness +", difficulty: "😊", coins: 0, progress: 0, speed: 0.15, obstacles: 15, music: "StereoMadness.mp3" },
+            { name: "Pack on Pack", difficulty: "😊", coins: 0, progress: 0, speed: 0.17, obstacles: 18, music: "PackOnPack.mp3" },
+            { name: "Totangeist", difficulty: "😐", coins: 0, progress: 0, speed: 0.19, obstacles: 22, music: "Totangeist.mp3" },
+            { name: "Ply out", difficulty: "😐", coins: 0, progress: 0, speed: 0.21, obstacles: 25, music: "PlyOut.mp3" },
+            { name: "Sermón after Sermón", difficulty: "😐", coins: 0, progress: 0, speed: 0.23, obstacles: 28, music: "SermonAfterSermon.mp3" },
+            { name: "Cant go out", difficulty: "😠", coins: 0, progress: 0, speed: 0.25, obstacles: 32, music: "CantGoOut.mp3" },
+            { name: "Toca Césped", difficulty: "😠", coins: 0, progress: 0, speed: 0.27, obstacles: 35, music: "TocaCesped.mp3" },
+            { name: "Time No Machine", difficulty: "😠", coins: 0, progress: 0, speed: 0.29, obstacles: 38, music: "TimeNoMachine.mp3" },
+            { name: "Aquí no hay Cycles", difficulty: "😱", coins: 0, progress: 0, speed: 0.31, obstacles: 42, music: "AquiNoHayCycles.mp3" },
+            { name: "XNotStep", difficulty: "😱", coins: 0, progress: 0, speed: 0.33, obstacles: 45, music: "XNotStep.mp3" },
+            { name: "PutterFunk", difficulty: "😱", coins: 0, progress: 0, speed: 0.35, obstacles: 48, music: "PutterFunk.mp3" },
+            { name: "Theory of the Big Bang", difficulty: "😱", coins: 0, progress: 0, speed: 0.37, obstacles: 52, music: "TheoryOfTheBigBang.mp3" },
+            { name: "Iker Adventures", difficulty: "👹", coins: 0, progress: 0, speed: 0.39, obstacles: 55, music: "IkerAdventures.mp3" },
+            { name: "Electropinasticks", difficulty: "👹", coins: 0, progress: 0, speed: 0.41, obstacles: 58, music: "Electropinasticks.mp3" },
+            { name: "FingerPam", difficulty: "👹", coins: 0, progress: 0, speed: 0.43, obstacles: 62, music: "FingerPam.mp3" },
+            { name: "Dash", difficulty: "👹", coins: 0, progress: 0, speed: 0.5, obstacles: 70, music: "Dash.mp3" }
         ];
 
         let currentLevelIndex = 0;
+
+        // MÚSICA
+        function initMenuMusic() {
+            if (!menuMusic) {
+                menuMusic = new Audio('Menu.mp3');
+                menuMusic.loop = true;
+                menuMusic.volume = 0.5;
+            }
+        }
+
+        function playMenuMusic() {
+            initMenuMusic();
+            if (levelMusic) {
+                levelMusic.pause();
+                levelMusic.currentTime = 0;
+            }
+            menuMusic.play().catch(e => console.log('Error playing menu music:', e));
+        }
+
+        function stopMenuMusic() {
+            if (menuMusic) {
+                menuMusic.pause();
+            }
+        }
+
+        function playLevelMusic(musicFile) {
+            stopMenuMusic();
+            if (levelMusic) {
+                levelMusic.pause();
+            }
+            levelMusic = new Audio(musicFile);
+            levelMusic.loop = true;
+            levelMusic.volume = 0.6;
+            levelMusic.play().catch(e => console.log('Error playing level music:', e));
+        }
+
+        function stopLevelMusic() {
+            if (levelMusic) {
+                levelMusic.pause();
+                levelMusic.currentTime = 0;
+            }
+        }
 
         // CREAR TARJETAS DE NIVELES
         function createLevelCards() {
@@ -548,11 +590,13 @@
         document.getElementById('playBtn').addEventListener('click', () => {
             document.getElementById('menu').style.display = 'none';
             document.getElementById('levelSelector').style.display = 'flex';
+            stopMenuMusic();
         });
 
         document.getElementById('backToMenu').addEventListener('click', () => {
             document.getElementById('levelSelector').style.display = 'none';
             document.getElementById('menu').style.display = 'flex';
+            playMenuMusic();
         });
 
         document.getElementById('settingsBtn').addEventListener('click', () => {
@@ -580,6 +624,7 @@
         let isJumping = false;
         let distanceTraveled = 0;
         let levelLength = 100;
+        let menuMusic, levelMusic;
 
         function startLevel(index) {
             currentLevel = levels[index];
@@ -590,6 +635,7 @@
             document.getElementById('gameUI').style.display = 'block';
             document.getElementById('levelNameDisplay').textContent = currentLevel.name;
             
+            playLevelMusic(currentLevel.music);
             initGame();
         }
 
@@ -605,8 +651,8 @@
             scene.fog = new THREE.Fog(0x87ceeb, 10, 50);
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(5, 2, 0);
-            camera.lookAt(0, 1, 0);
+            camera.position.set(-8, 2, 0);
+            camera.lookAt(-2, 1, 0);
 
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
@@ -740,6 +786,7 @@
 
         function gameOver(won) {
             gameRunning = false;
+            stopLevelMusic();
             
             const progress = Math.floor((distanceTraveled / levelLength) * 100);
             
@@ -761,6 +808,7 @@
             document.getElementById('gameOver').style.display = 'none';
             const container = document.getElementById('gameCanvas');
             container.innerHTML = '';
+            playLevelMusic(currentLevel.music);
             initGame();
         });
 
@@ -769,6 +817,8 @@
             document.getElementById('gameCanvas').style.display = 'none';
             document.getElementById('gameUI').style.display = 'none';
             document.getElementById('levelSelector').style.display = 'flex';
+            
+            stopLevelMusic();
             
             // Actualizar tarjeta del nivel
             const cards = document.querySelectorAll('.level-card');
@@ -804,6 +854,18 @@
 
         // Inicializar
         createLevelCards();
+        
+        // Reproducir música del menú al cargar
+        window.addEventListener('load', () => {
+            playMenuMusic();
+        });
+        
+        // Permitir reproducir música con cualquier interacción del usuario
+        document.body.addEventListener('click', () => {
+            if (document.getElementById('menu').style.display !== 'none') {
+                playMenuMusic();
+            }
+        }, { once: true });
     </script>
 </body>
 </html>
