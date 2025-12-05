@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Cheometry Dash — Menú & Selector</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#0f1724; --card:#0b1220; --accent:#6ee7b7; --muted:#98a0b3; --glass: rgba(255,255,255,0.06);
+      --glass-2: rgba(255,255,255,0.03);
+    }
+    *{box-sizing:border-box; font-family: 'Inter', system-ui, Arial;}
+    html,body{height:100%; margin:0; background:linear-gradient(180deg,#071023 0%, #07182a 60%); color:#e6eef7}
+
+    /* Center stage */
+    .app{height:100vh; display:grid; grid-template-rows: auto 1fr auto; align-items:center; justify-items:center;}
+
+    /* Logo */
+    .logo{margin-top:20px;}
+    .logo img{width:360px; max-width:70vw; display:block; filter:drop-shadow(0 8px 30px rgba(0,0,0,0.7));}
+
+    /* Main menu */
+    .menu{display:flex; gap:18px; align-items:center; justify-content:center; margin-top:18px}
+    .menu .btn{background:var(--glass); border:1px solid rgba(255,255,255,0.04); padding:14px; width:120px; height:120px; border-radius:16px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:transform .18s ease, box-shadow .18s; backdrop-filter: blur(6px);}
+    .menu .btn img{max-width:72px; max-height:72px; display:block}
+    .menu .btn:hover{transform:translateY(-6px) scale(1.03); box-shadow:0 14px 40px rgba(0,0,0,0.6)}
+
+    /* Secondary controls */
+    .bottom-controls{position:fixed; bottom:28px; width:100%; display:flex; justify-content:center; pointer-events:none}
+    .bottom-controls .settings{pointer-events:auto}
+    .settings .btn{width:84px; height:84px; border-radius:12px}
+
+    /* Container for ThreeJS canvas */
+    #game-container{position:fixed; inset:0; display:none;}
+
+    /* Level selector overlay */
+    .overlay{position:fixed; inset:0; display:none; align-items:center; justify-content:center}
+    .panel{width:920px; max-width:94vw; background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border-radius:18px; padding:20px; box-shadow:0 20px 60px rgba(3,6,14,0.8); border:1px solid rgba(255,255,255,0.03)}
+    .selector{display:flex; gap:20px; align-items:center}
+    .arrow{width:60px; height:60px; border-radius:12px; display:flex; align-items:center; justify-content:center; background:var(--glass-2); cursor:pointer}
+    .card-wrap{overflow:hidden; width:600px}
+    .card{width:600px; min-width:600px; border-radius:12px; padding:18px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border:1px solid rgba(255,255,255,0.025)}
+    .card .title{display:flex; align-items:center; gap:12px; font-weight:700; font-size:20px}
+    .chips{display:flex; gap:10px; margin-top:10px; align-items:center}
+    .chip{background:rgba(255,255,255,0.03); padding:8px 12px; border-radius:999px; font-weight:600}
+
+    .progress{margin-top:14px}
+    .progress .bar{height:14px; background:rgba(255,255,255,0.03); border-radius:99px; overflow:hidden}
+    .progress .bar > i{display:block; height:100%; width:0%; background:linear-gradient(90deg,var(--accent),#4fd1c5); border-radius:99px; transition:width .6s ease}
+
+    .dots{display:flex; gap:8px; justify-content:center; margin-top:14px}
+    .dot{width:12px; height:12px; border-radius:50%; background:rgba(255,255,255,0.12)}
+    .dot.active{background:white; box-shadow:0 6px 18px rgba(0,0,0,0.6)}
+
+    .controls-bottom{display:flex; justify-content:space-between; align-items:center; margin-top:14px}
+    .controls-bottom .start{background:var(--accent); color:#04201a; padding:10px 16px; border-radius:10px; font-weight:800; cursor:pointer}
+    .controls-bottom .back{background:transparent; color:var(--muted); padding:10px 12px; border-radius:10px; cursor:pointer}
+
+    /* Modal small */
+    .modal{position:fixed; right:18px; top:18px; background:var(--card); padding:16px; border-radius:12px; display:none; width:300px;}
+
+    /* Responsive tweaks */
+    @media (max-width:780px){
+      .card-wrap{width:86vw}
+      .card{min-width:86vw}
+      .menu .btn{width:92px; height:92px}
+    }
+
+    /* subtle entrance animation for card sliding */
+    .cards{display:flex; transition:transform .45s cubic-bezier(.22,.9,.29,1)}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="logo"><img src="CheometryDashLogo.png" alt="Cheometry Dash Logo"/></div>
+
+    <div class="menu">
+      <div class="btn" id="editBtn" title="Edición (no funcional)"><img src="Edit.png" alt="Edit"></div>
+      <div class="btn" id="playBtn" title="Play"><img src="Play.png" alt="Play"></div>
+      <div class="btn" id="creditsBtn" title="Créditos"><img src="Credits.png" alt="Credits"></div>
+    </div>
+
+    <div class="bottom-controls">
+      <div class="settings">
+        <div class="btn" id="settingsBtn"><img src="Settings.png" alt="Settings"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ThreeJS game container -->
+  <div id="game-container"></div>
+
+  <!-- Level selector overlay -->
+  <div class="overlay" id="selectorOverlay">
+    <div class="panel">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="margin:0">Selecciona un nivel</h3>
+        <button id="closeSelector" class="back">Cerrar</button>
+      </div>
+      <div class="selector" style="margin-top:12px; align-items:center">
+        <div class="arrow" id="leftArrow">◀</div>
+        <div class="card-wrap">
+          <div class="cards" id="cardsTrack">
+            <!-- cards injected here -->
+          </div>
+        </div>
+        <div class="arrow" id="rightArrow">▶</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Simple modals -->
+  <div class="modal" id="settingsModal">
+    <h4>Opciones</h4>
+    <p style="color:var(--muted)">Aquí puedes añadir controles de audio, gráficos y demás (placeholder).</p>
+  </div>
+  <div class="modal" id="creditsModal">
+    <h4>Créditos</h4>
+    <p style="color:var(--muted)">Hecho por IkerPlays — Cheometry Dash (demo UI + Three.js stub)</p>
+  </div>
+
+  <script src="https://unpkg.com/three@0.152.2/build/three.min.js"></script>
+  <script>
+    // -- Data: niveles y metadatos
+    const levels = [
+      "Stereo Madness +","Pack on Pack","Totangeist","Ply out","Sermón after Sermón","Cant go out","Toca Césped","Time No Machine","Aquí no hay Cycles","XNotStep","PutterFunk","Theory of the Big Bang","Iker Adventures","Electropinasticks","FingerPam","Dash"
+    ];
+
+    // asigna dificultad progresiva
+    const difficultyMap = ['🟢','🟡','🔴','⛔','👹'];
+    const levelData = levels.map((name,i)=>({
+      id:i,
+      name,
+      difficulty: difficultyMap[Math.min(Math.floor(i/3), difficultyMap.length-1)],
+      coins: Math.floor(Math.random()*100),
+      progress: Math.floor(Math.random()*70), // porcentaje guardado
+    }));
+
+    // referencias DOM
+    const playBtn = document.getElementById('playBtn');
+    const settingsBtn = document.getElementById('settingsBtn');
+    const creditsBtn = document.getElementById('creditsBtn');
+    const editBtn = document.getElementById('editBtn');
+
+    const selectorOverlay = document.getElementById('selectorOverlay');
+    const cardsTrack = document.getElementById('cardsTrack');
+    const leftArrow = document.getElementById('leftArrow');
+    const rightArrow = document.getElementById('rightArrow');
+    const closeSelector = document.getElementById('closeSelector');
+
+    const settingsModal = document.getElementById('settingsModal');
+    const creditsModal = document.getElementById('creditsModal');
+
+    // -- Build cards
+    function buildCards(){
+      cardsTrack.innerHTML='';
+      levelData.forEach((lvl)=>{
+        const card = document.createElement('div'); card.className='card';
+        card.innerHTML = `
+          <div class="title"><span style="font-size:20px">${lvl.difficulty}</span><div>${lvl.name}</div></div>
+          <div class="chips">
+            <div class="chip">⭐ Monedas: <strong>${lvl.coins}</strong></div>
+            <div class="chip">ID: ${lvl.id+1}</div>
+          </div>
+          <div class="progress">
+            <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-bottom:8px"><div>Progreso</div><div>${lvl.progress}%</div></div>
+            <div class="bar"><i style="width:${lvl.progress}%"></i></div>
+          </div>
+          <div class="dots" style="margin-top:18px">
+            ${levelData.map((_,idx)=> `<div class='dot ${idx===lvl.id? 'active':''}'></div>`).join('')}
+          </div>
+          <div class="controls-bottom">
+            <div style="color:var(--muted); font-size:13px">Dificultad: ${lvl.difficulty==='🟢'? 'Fácil' : lvl.difficulty==='🟡'? 'Medio' : lvl.difficulty==='🔴'? 'Difícil' : lvl.difficulty==='⛔'? 'Imposible' : 'Demonio'}</div>
+            <div>
+              <button class="back" data-id="${lvl.id}">Atrás</button>
+              <button class="start" data-id="${lvl.id}">Comenzar</button>
+            </div>
+          </div>
+        `;
+        cardsTrack.appendChild(card);
+      });
+    }
+
+    buildCards();
+
+    // sliding logic
+    let currentIndex = 0;
+    function updateSlide(){
+      const cardWidth = cardsTrack.querySelector('.card').offsetWidth;
+      cardsTrack.style.transform = `translateX(${-currentIndex * cardWidth}px)`;
+      // update dot highlights across cards: we render dots inside each card, but reflect active state globally
+      document.querySelectorAll('.card .dot').forEach((d,idx)=>{
+        // each card has `levels.length` dots; compute position
+        // We'll set active in each card by index matching currentIndex
+      });
+      // update active dots per card
+      document.querySelectorAll('.card').forEach((card,cardIdx)=>{
+        card.querySelectorAll('.dot').forEach((dot,dIdx)=>{
+          dot.classList.toggle('active', dIdx===currentIndex);
+        });
+      });
+    }
+
+    leftArrow.addEventListener('click', ()=>{ currentIndex = (currentIndex-1+levelData.length)%levelData.length; updateSlide(); });
+    rightArrow.addEventListener('click', ()=>{ currentIndex = (currentIndex+1)%levelData.length; updateSlide(); });
+
+    closeSelector.addEventListener('click', ()=>{ selectorOverlay.style.display='none'; });
+
+    // open selector when press Play
+    playBtn.addEventListener('click', ()=>{
+      selectorOverlay.style.display='flex';
+      updateSlide();
+    });
+
+    // settings and credits simple toggles
+    settingsBtn.addEventListener('click', (e)=>{
+      settingsModal.style.display = settingsModal.style.display==='block'? 'none':'block';
+      // hide credits
+      creditsModal.style.display='none';
+    });
+    creditsBtn.addEventListener('click', ()=>{
+      creditsModal.style.display = creditsModal.style.display==='block'? 'none':'block';
+      settingsModal.style.display='none';
+    });
+
+    // Edit button intentionally non-functional but visible
+    editBtn.addEventListener('click', ()=>{
+      alert('Modo edición: icono mostrado (aún no funcional)');
+    });
+
+    // Start buttons in cards
+    document.addEventListener('click',(e)=>{
+      if(e.target?.matches('.start')){
+        const id = Number(e.target.dataset.id);
+        startLevel(id);
+      }
+      if(e.target?.matches('.back')){
+        // back button in card just close overlay
+        selectorOverlay.style.display='none';
+      }
+    });
+
+    // --- Minimal Three.js gameplay stub ---
+    let scene, camera, renderer, player;
+    let running=false;
+    const container = document.getElementById('game-container');
+
+    function initThree(){
+      container.style.display='block';
+      // create renderer
+      renderer = new THREE.WebGLRenderer({antialias:true});
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      container.appendChild(renderer.domElement);
+
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x07122a);
+
+      camera = new THREE.PerspectiveCamera(65, window.innerWidth/window.innerHeight, 0.1, 2000);
+      camera.position.set(0,6,14);
+
+      // light
+      const amb = new THREE.HemisphereLight(0xffffff, 0x080820, 0.8);
+      scene.add(amb);
+      const dir = new THREE.DirectionalLight(0xffffff,0.6); dir.position.set(4,10,6); scene.add(dir);
+
+      // ground
+      const gmat = new THREE.MeshStandardMaterial({color:0x061428, metalness:0.1, roughness:0.7});
+      const ground = new THREE.Mesh(new THREE.BoxGeometry(200,1,8), gmat); ground.position.set(0,-0.6,0); scene.add(ground);
+
+      // player
+      const pgeo = new THREE.BoxGeometry(2,2,2);
+      const pm = new THREE.MeshStandardMaterial({color:0x7ee7c4});
+      player = new THREE.Mesh(pgeo,pm); player.position.set(0,1,0); scene.add(player);
+
+      // camera follow
+      window.addEventListener('resize', ()=>{ camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+
+      animate();
+    }
+
+    // simple runner variables
+    let playerZ = 0; // distance progressed
+    let levelLength = 300; // units
+    let currentLevelId = 0;
+
+    function startLevel(id){
+      currentLevelId = id;
+      selectorOverlay.style.display='none';
+      // initialize three if needed
+      if(!renderer) initThree();
+      // reset player state
+      playerZ = 0; running = true;
+      // reflect initial progress back to UI
+      updateInGameUI();
+    }
+
+    function updateInGameUI(){
+      // update the card's progress so the user sees running progress if they open selector later
+      const ld = levelData[currentLevelId];
+      const pct = Math.min(100, Math.floor((playerZ/levelLength)*100));
+      ld.progress = Math.max(ld.progress, pct);
+      // update the rendered card bars if overlay present
+      document.querySelectorAll('.card').forEach((card,cardIdx)=>{
+        const bar = card.querySelector('.bar > i');
+        if(bar){ bar.style.width = (cardIdx===currentLevelId? pct : levelData[cardIdx].progress) + '%'; }
+        const txt = card.querySelector('.progress div');
+      });
+    }
+
+    let lastTime=0;
+    function animate(t){
+      requestAnimationFrame(animate);
+      const dt = (t-lastTime)/1000 || 0; lastTime = t;
+
+      if(running){
+        // advance the player
+        playerZ += dt * 60; // speed
+        player.position.z = -playerZ;
+        camera.position.z = -playerZ + 14;
+        camera.position.x = Math.sin(playerZ*0.01)*2;
+        camera.lookAt(player.position.x, player.position.y, player.position.z - 8);
+
+        // when reach end
+        if(playerZ >= levelLength){
+          running = false;
+          // award a coin batch and mark progress complete
+          levelData[currentLevelId].coins += Math.floor(5 + Math.random()*20);
+          levelData[currentLevelId].progress = 100;
+          alert('¡Nivel completado! Monedas ganadas.');
+        }
+
+        updateInGameUI();
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    // Initialize UI active slide after images loaded
+    window.addEventListener('load', ()=>{
+      // ensure cards are sized consistently before sliding
+      setTimeout(()=> updateSlide(), 250);
+    });
+
+    // small nicety: allow keyboard arrows to navigate selector when open
+    window.addEventListener('keydown', (e)=>{
+      if(selectorOverlay.style.display==='flex'){
+        if(e.key === 'ArrowLeft') leftArrow.click();
+        if(e.key === 'ArrowRight') rightArrow.click();
+        if(e.key === 'Enter') document.querySelectorAll('.start')[currentIndex].click();
+      }
+    });
+
+    // initial update
+    updateSlide();
+  </script>
+</body>
+</html>
