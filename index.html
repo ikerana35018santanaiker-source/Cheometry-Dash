@@ -625,6 +625,8 @@
         let distanceTraveled = 0;
         let levelLength = 100;
         let menuMusic, levelMusic;
+        let isMouseDown = false;
+        let isKeyDown = false;
 
         function startLevel(index) {
             currentLevel = levels[index];
@@ -651,8 +653,10 @@
             scene.fog = new THREE.Fog(0x87ceeb, 10, 50);
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(-8, 2, 0);
-            camera.lookAt(-2, 1, 0);
+            camera.position.x = 0;
+            camera.position.y = 3;
+            camera.position.z = 10;
+            camera.lookAt(0, 0, 0);
 
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
@@ -669,11 +673,13 @@
             scene.add(dirLight);
 
             // Suelo
-            const groundGeo = new THREE.PlaneGeometry(2, 200);
+            const groundGeo = new THREE.PlaneGeometry(200, 10);
             const groundMat = new THREE.MeshLambertMaterial({ color: 0x4a90e2 });
             ground = new THREE.Mesh(groundGeo, groundMat);
-            ground.rotation.y = Math.PI / 2;
-            ground.position.x = -50;
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.x = 50;
+            ground.position.y = 0;
+            ground.position.z = 0;
             ground.receiveShadow = true;
             scene.add(ground);
 
@@ -681,7 +687,9 @@
             const playerGeo = new THREE.BoxGeometry(1, 1, 1);
             const playerMat = new THREE.MeshLambertMaterial({ color: 0xff6b6b });
             player = new THREE.Mesh(playerGeo, playerMat);
-            player.position.set(0, 0.5, 0);
+            player.position.x = -3;
+            player.position.y = 0.5;
+            player.position.z = 0;
             player.castShadow = true;
             scene.add(player);
 
@@ -712,7 +720,8 @@
                     obstacle.position.y = height / 2;
                 }
                 
-                obstacle.position.x = -10 - i * (levelLength / currentLevel.obstacles);
+                obstacle.position.x = 5 + i * (levelLength / currentLevel.obstacles);
+                obstacle.position.y = obstacle.position.y;
                 obstacle.position.z = 0;
                 obstacle.castShadow = true;
                 scene.add(obstacle);
@@ -723,12 +732,12 @@
         function gameLoop() {
             if (!gameRunning) return;
 
-            // Mover obstáculos y suelo
+            // Mover obstáculos y suelo hacia la izquierda
             obstacles.forEach(obs => {
-                obs.position.x += gameSpeed;
+                obs.position.x -= gameSpeed;
                 
-                if (obs.position.x > 10) {
-                    obs.position.x = -levelLength;
+                if (obs.position.x < -15) {
+                    obs.position.x = levelLength + 5;
                 }
 
                 // Colisión
@@ -737,9 +746,9 @@
                 }
             });
 
-            ground.position.x += gameSpeed;
-            if (ground.position.x > 50) {
-                ground.position.x = -50;
+            ground.position.x -= gameSpeed;
+            if (ground.position.x < -50) {
+                ground.position.x = 50;
             }
 
             // Física del jugador
@@ -752,6 +761,12 @@
                     isJumping = false;
                     playerVelocity = 0;
                 }
+            }
+            
+            // Saltar si se mantiene presionado (click o tecla)
+            if ((isMouseDown || isKeyDown) && !isJumping && gameRunning) {
+                isJumping = true;
+                playerVelocity = 0.25;
             }
 
             // Rotación del jugador
@@ -828,20 +843,42 @@
             progressFill.textContent = currentLevel.progress + '%';
         });
 
-        // Control de salto
+        // Control de salto con teclado
         document.addEventListener('keydown', (e) => {
-            if ((e.code === 'Space' || e.code === 'ArrowUp') && !isJumping && gameRunning) {
-                isJumping = true;
-                playerVelocity = 0.25;
+            if ((e.code === 'Space' || e.code === 'ArrowUp') && gameRunning) {
+                isKeyDown = true;
             }
         });
 
-        document.addEventListener('click', () => {
-            if (!isJumping && gameRunning) {
-                isJumping = true;
-                playerVelocity = 0.25;
+        document.addEventListener('keyup', (e) => {
+            if (e.code === 'Space' || e.code === 'ArrowUp') {
+                isKeyDown = false;
             }
         });
+
+        // Control de salto con mouse
+        document.addEventListener('mousedown', () => {
+            if (gameRunning) {
+                isMouseDown = true;
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            isMouseDown = false;
+        });
+
+        // Control de salto con touch (móviles)
+        document.addEventListener('touchstart', (e) => {
+            if (gameRunning) {
+                e.preventDefault();
+                isMouseDown = true;
+            }
+        }, { passive: false });
+
+        document.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            isMouseDown = false;
+        }, { passive: false });
 
         // Responsive
         window.addEventListener('resize', () => {
