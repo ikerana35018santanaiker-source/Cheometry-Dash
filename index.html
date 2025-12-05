@@ -590,13 +590,11 @@
         document.getElementById('playBtn').addEventListener('click', () => {
             document.getElementById('menu').style.display = 'none';
             document.getElementById('levelSelector').style.display = 'flex';
-            stopMenuMusic();
         });
 
         document.getElementById('backToMenu').addEventListener('click', () => {
             document.getElementById('levelSelector').style.display = 'none';
             document.getElementById('menu').style.display = 'flex';
-            playMenuMusic();
         });
 
         document.getElementById('settingsBtn').addEventListener('click', () => {
@@ -840,6 +838,7 @@
             document.getElementById('levelSelector').style.display = 'flex';
             
             stopLevelMusic();
+            playMenuMusic();
             
             // Actualizar tarjeta del nivel
             const cards = document.querySelectorAll('.level-card');
