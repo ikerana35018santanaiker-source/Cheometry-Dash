@@ -760,13 +760,19 @@
                     player.position.y = 0.5;
                     isJumping = false;
                     playerVelocity = 0;
+                    
+                    // Saltar automáticamente si se mantiene presionado
+                    if (isMouseDown || isKeyDown) {
+                        isJumping = true;
+                        playerVelocity = 0.25;
+                    }
                 }
-            }
-            
-            // Saltar si se mantiene presionado (click o tecla)
-            if ((isMouseDown || isKeyDown) && !isJumping && gameRunning) {
-                isJumping = true;
-                playerVelocity = 0.25;
+            } else {
+                // Iniciar salto si se presiona y está en el suelo
+                if ((isMouseDown || isKeyDown) && player.position.y <= 0.5) {
+                    isJumping = true;
+                    playerVelocity = 0.25;
+                }
             }
 
             // Rotación del jugador
@@ -857,8 +863,8 @@
         });
 
         // Control de salto con mouse
-        document.addEventListener('mousedown', () => {
-            if (gameRunning) {
+        document.addEventListener('mousedown', (e) => {
+            if (gameRunning && e.target.tagName !== 'BUTTON') {
                 isMouseDown = true;
             }
         });
@@ -869,15 +875,17 @@
 
         // Control de salto con touch (móviles)
         document.addEventListener('touchstart', (e) => {
-            if (gameRunning) {
+            if (gameRunning && e.target.tagName !== 'BUTTON') {
                 e.preventDefault();
                 isMouseDown = true;
             }
         }, { passive: false });
 
         document.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            isMouseDown = false;
+            if (gameRunning) {
+                e.preventDefault();
+                isMouseDown = false;
+            }
         }, { passive: false });
 
         // Responsive
