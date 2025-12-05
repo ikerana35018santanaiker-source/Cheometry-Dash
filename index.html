@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cheometry Dash</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+    
     <style>
         * {
             margin: 0;
@@ -402,6 +406,66 @@
         }
     </style>
 </head>
+    <!-- EDITOR (CREATE / SEARCH / LIST) -->
+<div id="editorPanel" style="display:none; z-index:2000;">
+  <div id="editorOverlay" style="position:fixed; inset:0; background:rgba(0,0,0,0.6);"></div>
+  <div id="editorWindow" style="position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); width:90%; max-width:1000px; height:80vh; background:linear-gradient(180deg,#fff,#f7f7fb); border-radius:20px; overflow:hidden; box-shadow:0 30px 80px rgba(0,0,0,0.4); display:flex; gap:20px;">
+    <!-- Sidebar -->
+    <aside style="width:320px; padding:20px; display:flex; flex-direction:column; gap:12px; background:linear-gradient(180deg,#f0f4ff,#ffffff);">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="margin:0">Editor</h3>
+        <button id="closeEditor" style="border:none;background:#fff;padding:8px 12px;border-radius:10px;cursor:pointer;">✕</button>
+      </div>
+
+      <div>
+        <input id="searchInput" placeholder="Buscar niveles por nombre..." style="width:100%; padding:10px; border-radius:10px; border:1px solid #e0e0e0;">
+      </div>
+
+      <div style="display:flex; gap:8px;">
+        <button id="tabSearch" class="editor-tab" data-tab="search" style="flex:1;padding:10px;border-radius:10px;border:none;cursor:pointer;">Buscar</button>
+        <button id="tabCreate" class="editor-tab" data-tab="create" style="flex:1;padding:10px;border-radius:10px;border:none;cursor:pointer;background:linear-gradient(90deg,#f093fb,#f5576c);color:#fff;">Crear</button>
+      </div>
+
+      <div id="yourLevelsList" style="flex:1; overflow:auto; border-radius:10px; padding:8px; background:rgba(255,255,255,0.4);">
+        <!-- Aquí se llenan tus niveles locales -->
+      </div>
+
+      <div style="display:flex; gap:8px; align-items:center;">
+        <button id="createNewLevelBtn" style="flex:1;padding:12px;border-radius:12px;border:none; cursor:pointer; background:#4a90e2;color:white;">Crear nuevo</button>
+        <button id="syncBtn" style="padding:8px;border-radius:10px;border:none;cursor:pointer;">Publicar</button>
+      </div>
+    </aside>
+
+    <!-- Main area: editor/tester -->
+    <main style="flex:1; padding:20px; display:flex; flex-direction:column; gap:12px;">
+      <div style="display:flex; gap:12px; align-items:center;">
+        <input id="editorLevelName" placeholder="Nombre del nivel" style="flex:1;padding:10px;border-radius:10px;border:1px solid #ddd;">
+        <select id="editorDifficulty" style="padding:10px;border-radius:10px;border:1px solid #ddd;">
+          <option value="😊">😊 Fácil</option>
+          <option value="😐">😐 Medio</option>
+          <option value="😠">😠 Difícil</option>
+          <option value="😱">😱 Extremo</option>
+          <option value="👹">👹 Infernal</option>
+        </select>
+        <button id="saveLevelBtn" style="padding:10px 16px;border-radius:10px;border:none;background:linear-gradient(90deg,#7bd389,#49c3a6);cursor:pointer;color:#fff;">Guardar</button>
+        <button id="testLevelBtn" style="padding:10px 16px;border-radius:10px;border:none;background:#333;cursor:pointer;color:#fff;">Test</button>
+      </div>
+
+      <div id="editorCanvasArea" style="flex:1; background:#eef2ff; border-radius:12px; display:flex; align-items:center; justify-content:center;">
+        <!-- Aquí se puede renderizar una vista previa simple del nivel / parámetros -->
+        <div id="editorPreview">Vista previa del nivel (mock)</div>
+      </div>
+
+      <div style="display:flex; gap:8px; justify-content:flex-end;">
+        <button id="cloneLevelBtn" style="padding:10px 14px;border-radius:10px;border:none;cursor:pointer;">Clonar</button>
+        <button id="publishLevelBtn" style="padding:10px 14px;border-radius:10px;border:none;background:linear-gradient(90deg,#f093fb,#f5576c);cursor:pointer;color:#fff;">Publicar</button>
+      </div>
+
+      <div id="editorLog" style="height:80px; overflow:auto; font-size:13px; color:#444; background:#fff; border-radius:8px; padding:8px; border:1px solid #eee;"></div>
+    </main>
+  </div>
+</div>
+
 <body>
     <!-- MENÚ PRINCIPAL -->
     <div id="menu">
@@ -915,6 +979,334 @@
                 playMenuMusic();
             }
         }, { once: true });
+        
+const firebaseConfig = {
+  apiKey: "AIzaSyBp5c5G0lb_t5mFoK49CXfkLbWlmnRBtfo",
+  authDomain: "cheometry-dash.firebaseapp.com",
+  projectId: "cheometry-dash",
+  storageBucket: "cheometry-dash.firebasestorage.app",
+  messagingSenderId: "882791750468",
+  appId: "1:882791750468:web:c5c19b5d6d46d2430e9511",
+  measurementId: "G-K9BPCEWEJZ"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// login anonimo para publicar
+auth.signInAnonymously().catch(err => console.warn('Auth anon error', err));
+
+/* ------------------------
+   LOCALSTORAGE - claves
+   ------------------------ */
+const LS_KEY = 'cheometry_data_v1'; // guarda niveles locales y progreso
+const LS_COINS = 'cheometry_coins_v1';
+
+/* ------------------------
+   Inicializar guardado de niveles (si no existe)
+   ------------------------ */
+function loadLocalData() {
+  const raw = localStorage.getItem(LS_KEY);
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      // combinar progresos con levels existentes (match por name)
+      parsed.levels?.forEach(saved => {
+        const lvl = levels.find(l => l.name === saved.name);
+        if (lvl) {
+          lvl.progress = saved.progress ?? lvl.progress;
+          lvl.coins = saved.coins ?? lvl.coins;
+          // permitir override de parámetros si guardaste edición
+          if (saved.custom) Object.assign(lvl, saved.custom);
+        } else {
+          // si hay niveles locales que no existen en la lista original, añadirlos
+          levels.push(saved);
+        }
+      });
+    } catch (e) { console.error('parse ls error', e); }
+  } else {
+    // si no hay LS, asegurarnos que todos los niveles tengan coins/progress
+    saveLocalData();
+  }
+
+  // monedas globales
+  const coinsRaw = localStorage.getItem(LS_COINS);
+  if (!coinsRaw) localStorage.setItem(LS_COINS, '0');
+}
+
+function saveLocalData() {
+  const data = {
+    levels: levels.map(l => ({
+      name: l.name,
+      difficulty: l.difficulty,
+      coins: l.coins ?? 0,
+      progress: l.progress ?? 0,
+      speed: l.speed,
+      obstacles: l.obstacles,
+      music: l.music,
+      custom: {
+        // guarda sólo campos editables por el usuario
+        speed: l.speed,
+        obstacles: l.obstacles
+      }
+    }))
+  };
+  localStorage.setItem(LS_KEY, JSON.stringify(data));
+}
+
+/* ------------------------
+   Asegurar coins en todos los niveles
+   ------------------------ */
+levels.forEach(l => {
+  if (typeof l.coins === 'undefined') l.coins = 0;
+  if (typeof l.progress === 'undefined') l.progress = 0;
+});
+
+/* cargar LS al inicio */
+loadLocalData();
+
+/* ------------------------
+   Editor UI: wiring
+   ------------------------ */
+function initEditorUI() {
+  const editorPanel = document.getElementById('editorPanel');
+  const editBtn = document.getElementById('editBtn');
+  const closeEditor = document.getElementById('closeEditor');
+  const yourList = document.getElementById('yourLevelsList');
+  const searchInput = document.getElementById('searchInput');
+  const createNewLevelBtn = document.getElementById('createNewLevelBtn');
+  const saveLevelBtn = document.getElementById('saveLevelBtn');
+  const testLevelBtn = document.getElementById('testLevelBtn');
+  const publishLevelBtn = document.getElementById('publishLevelBtn');
+  const cloneLevelBtn = document.getElementById('cloneLevelBtn');
+  const editorLevelName = document.getElementById('editorLevelName');
+  const editorDifficulty = document.getElementById('editorDifficulty');
+  const editorLog = document.getElementById('editorLog');
+
+  let editingIndex = null;
+
+  // abrir editor
+  editBtn.addEventListener('click', () => {
+    editorPanel.style.display = 'block';
+    renderYourLevels();
+  });
+
+  // cerrar
+  closeEditor.addEventListener('click', () => {
+    editorPanel.style.display = 'none';
+  });
+
+  // crear nuevo nivel (inserta en array y guarda)
+  createNewLevelBtn.addEventListener('click', () => {
+    const newName = `Nuevo Nivel ${Date.now()}`;
+    const newLevel = {
+      name: newName,
+      difficulty: '😊',
+      coins: 0,
+      progress: 0,
+      speed: 0.15,
+      obstacles: 10,
+      music: ''
+    };
+    levels.push(newLevel);
+    saveLocalData();
+    renderYourLevels();
+    log('Nivel creado: ' + newName);
+  });
+
+  // buscar en la lista
+  searchInput.addEventListener('input', (e) => {
+    renderYourLevels(e.target.value);
+  });
+
+  // seleccionar nivel de la lista para editar / acciones
+  function renderYourLevels(filter = '') {
+    yourList.innerHTML = '';
+    const filtered = levels.filter(l => l.name.toLowerCase().includes(filter.toLowerCase()));
+    filtered.forEach((lvl, idx) => {
+      const el = document.createElement('div');
+      el.style.display = 'flex';
+      el.style.justifyContent = 'space-between';
+      el.style.alignItems = 'center';
+      el.style.padding = '8px';
+      el.style.borderBottom = '1px solid rgba(0,0,0,0.05)';
+      el.innerHTML = `
+        <div style="flex:1">
+          <div style="font-weight:600">${lvl.name}</div>
+          <div style="font-size:12px;color:#666">Dif: ${lvl.difficulty} · Monedas: ${lvl.coins} · Progreso: ${lvl.progress}%</div>
+        </div>
+        <div style="display:flex; gap:6px; margin-left:12px;">
+          <button class="play-from-list" data-idx="${levels.indexOf(lvl)}" style="padding:6px;border-radius:8px;border:none;cursor:pointer;">▶</button>
+          <button class="edit-from-list" data-idx="${levels.indexOf(lvl)}" style="padding:6px;border-radius:8px;border:none;cursor:pointer;">✎</button>
+          <button class="clone-from-list" data-idx="${levels.indexOf(lvl)}" style="padding:6px;border-radius:8px;border:none;cursor:pointer;">⧉</button>
+          <button class="publish-from-list" data-idx="${levels.indexOf(lvl)}" style="padding:6px;border-radius:8px;border:none;cursor:pointer;">☁</button>
+        </div>
+      `;
+      yourList.appendChild(el);
+    });
+
+    // añadir listeners dinámicos
+    $$('.play-from-list', yourList).forEach(btn => {
+      btn.onclick = () => {
+        const i = parseInt(btn.dataset.idx);
+        // abrir y jugar nivel desde la UI principal
+        startLevel(i);
+        editorPanel.style.display = 'none';
+      };
+    });
+
+    $$('.edit-from-list', yourList).forEach(btn => {
+      btn.onclick = () => {
+        const i = parseInt(btn.dataset.idx);
+        editingIndex = i;
+        const lvl = levels[i];
+        editorLevelName.value = lvl.name;
+        editorDifficulty.value = lvl.difficulty;
+        log('Editando ' + lvl.name);
+      };
+    });
+
+    $$('.clone-from-list', yourList).forEach(btn => {
+      btn.onclick = () => {
+        const i = parseInt(btn.dataset.idx);
+        cloneLevel(i);
+      };
+    });
+
+    $$('.publish-from-list', yourList).forEach(btn => {
+      btn.onclick = () => {
+        const i = parseInt(btn.dataset.idx);
+        openPublishDialog(i);
+      };
+    });
+  }
+
+  // guardar cambios del editor
+  saveLevelBtn.addEventListener('click', () => {
+    if (editingIndex === null) {
+      log('Selecciona un nivel para guardar (pulsa ✎ en la lista).');
+      return;
+    }
+    const lvl = levels[editingIndex];
+    lvl.name = editorLevelName.value || lvl.name;
+    lvl.difficulty = editorDifficulty.value || lvl.difficulty;
+    saveLocalData();
+    renderYourLevels();
+    log('Guardado: ' + lvl.name);
+  });
+
+  // testear (abre nivel en modo test)
+  testLevelBtn.addEventListener('click', () => {
+    if (editingIndex === null) { log('Selecciona un nivel primero.'); return; }
+    const i = editingIndex;
+    startLevel(i);
+    editorPanel.style.display = 'none';
+  });
+
+  // clonar
+  cloneLevelBtn.addEventListener('click', () => {
+    if (editingIndex === null) { log('Selecciona un nivel para clonar.'); return; }
+    cloneLevel(editingIndex);
+  });
+
+  function cloneLevel(idx) {
+    const base = levels[idx];
+    // generar nombre CloneX
+    const baseName = base.name;
+    let n = 1;
+    let newName = `${baseName} Clone (${n})`;
+    while (levels.some(l => l.name === newName)) {
+      n++;
+      newName = `${baseName} Clone (${n})`;
+    }
+    const clone = JSON.parse(JSON.stringify(base));
+    clone.name = newName;
+    clone.progress = 0;
+    clone.coins = 0;
+    levels.push(clone);
+    saveLocalData();
+    renderYourLevels();
+    log('Clonado: ' + newName);
+  }
+
+  // publicar: abrir diálogo de emoji/dificultad -> subir a Firestore
+  function openPublishDialog(idx) {
+    const lvl = levels[idx];
+    const emoji = prompt('Elige emoji de dificultad para publicar (por ejemplo 😊, 😐, 😠, 😱, 👹)', lvl.difficulty);
+    if (emoji === null) { log('Publicación cancelada'); return; }
+    lvl.difficulty = emoji;
+    publishLevelToFirebase(idx);
+  }
+
+  function publishLevelToFirebase(idx) {
+    const lvl = levels[idx];
+    const payload = {
+      name: lvl.name,
+      difficulty: lvl.difficulty,
+      speed: lvl.speed,
+      obstacles: lvl.obstacles,
+      music: lvl.music || '',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      author: auth.currentUser ? auth.currentUser.uid : 'anonymous'
+    };
+    db.collection('public_levels').add(payload)
+      .then(ref => {
+        log('Publicado en Firebase: ' + lvl.name + ' (id: ' + ref.id + ')');
+      })
+      .catch(err => {
+        log('Error publicando: ' + err.message);
+      });
+  }
+
+  function openEditorForIndex(i) {
+    editingIndex = i;
+    const lvl = levels[i];
+    editorLevelName.value = lvl.name;
+    editorDifficulty.value = lvl.difficulty;
+    editorPanel.style.display = 'block';
+    renderYourLevels();
+  }
+
+  function log(msg) {
+    const now = new Date().toLocaleTimeString();
+    editorLog.innerHTML = `<div>[${now}] ${msg}</div>` + editorLog.innerHTML;
+  }
+
+  // Init render
+  renderYourLevels();
+
+  // Exponer funciones (útil para event binding fuera)
+  window.openEditorForIndex = openEditorForIndex;
+  window.renderYourLevels = renderYourLevels;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initEditorUI();
+});
+
+/* ------------------------
+   INTEGRACIÓN: actualizar progreso/monedas -> guardar en LS
+   Llamar saveLocalData() cada vez que se actualice currentLevel.progress o currency
+   ------------------------ */
+
+function awardCoinsForLevel(levelIndex, coinsToAdd=1) {
+  levels[levelIndex].coins = (levels[levelIndex].coins || 0) + coinsToAdd;
+  // persistir monedas por nivel y global
+  saveLocalData();
+  let total = parseInt(localStorage.getItem(LS_COINS) || '0', 10);
+  total += coinsToAdd;
+  localStorage.setItem(LS_COINS, String(total));
+}
+
+/* Modifica tu lógica actual en gameOver() y en la UI donde actualices progreso:
+   - cuando haya progreso nuevo: asigna currentLevel.progress = nuevoValor; saveLocalData();
+   - cuando recojas monedas: awardCoinsForLevel(currentLevelIndex, cantidad)
+*/
+
+/* Ejemplo: al completar nivel en gameOver(true) ya estabas poniendo currentLevel.progress = 100;
+   añade saveLocalData() justo después */
+
     </script>
 </body>
 </html>
