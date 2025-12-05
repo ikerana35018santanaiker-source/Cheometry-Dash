@@ -5,10 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cheometry Dash</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
-    
+    <!-- Firebase SDK v8 desde CDN confiable -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-app.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-database.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -22,7 +21,10 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
 
-        /* MENÚ PRINCIPAL */
+        .hidden {
+            display: none !important;
+        }
+
         #menu {
             position: absolute;
             top: 0;
@@ -38,10 +40,11 @@
         }
 
         #logo {
-            width: 400px;
-            max-width: 80%;
+            font-size: 72px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 10px 20px rgba(0,0,0,0.3);
             margin-bottom: 50px;
-            filter: drop-shadow(0 10px 20px rgba(0,0,0,0.3));
             animation: float 3s ease-in-out infinite;
         }
 
@@ -66,7 +69,10 @@
             cursor: pointer;
             transition: all 0.3s ease;
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            padding: 15px;
+            font-size: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .menu-btn:hover {
@@ -74,20 +80,11 @@
             box-shadow: 0 15px 40px rgba(0,0,0,0.4);
         }
 
-        .menu-btn:active {
-            transform: translateY(-5px) scale(1.05);
-        }
-
-        .menu-btn img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-        }
-
         #playBtn {
             width: 150px;
             height: 150px;
             background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
         }
 
         .settings-btn {
@@ -95,7 +92,6 @@
             height: 100px;
         }
 
-        /* SELECTOR DE NIVELES */
         #levelSelector {
             display: none;
             position: absolute;
@@ -114,7 +110,7 @@
             position: relative;
             width: 500px;
             max-width: 90%;
-            height: 300px;
+            height: 400px;
         }
 
         .level-card {
@@ -127,7 +123,6 @@
             box-shadow: 0 20px 60px rgba(0,0,0,0.4);
             display: none;
             flex-direction: column;
-            transition: all 0.3s ease;
         }
 
         .level-card.active {
@@ -136,14 +131,8 @@
         }
 
         @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateX(100px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
+            from { opacity: 0; transform: translateX(100px); }
+            to { opacity: 1; transform: translateX(0); }
         }
 
         .level-header {
@@ -164,8 +153,7 @@
         }
 
         .coins-info {
-            font-size: 20px;
-            color: #666;
+            font-size: 24px;
             margin-bottom: 20px;
         }
 
@@ -174,12 +162,6 @@
             display: flex;
             flex-direction: column;
             justify-content: flex-end;
-        }
-
-        .progress-label {
-            font-size: 16px;
-            color: #888;
-            margin-bottom: 10px;
         }
 
         .progress-bar {
@@ -207,6 +189,7 @@
             display: flex;
             gap: 8px;
             justify-content: center;
+            margin-bottom: 15px;
         }
 
         .dot {
@@ -240,16 +223,10 @@
 
         .nav-btn:hover {
             transform: translateY(-50%) scale(1.1);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
         }
 
-        .nav-btn.left {
-            left: 20px;
-        }
-
-        .nav-btn.right {
-            right: 20px;
-        }
+        .nav-btn.left { left: 20px; }
+        .nav-btn.right { right: 20px; }
 
         .play-level-btn {
             width: 100%;
@@ -266,7 +243,6 @@
 
         .play-level-btn:hover {
             transform: scale(1.05);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
         }
 
         .back-btn {
@@ -288,7 +264,6 @@
             transform: scale(1.1);
         }
 
-        /* JUEGO 3D */
         #gameCanvas {
             display: none;
             position: absolute;
@@ -308,6 +283,12 @@
             text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
             z-index: 100;
             display: none;
+            text-align: center;
+        }
+
+        .coins-collected {
+            font-size: 20px;
+            margin-top: 10px;
         }
 
         .game-over {
@@ -332,7 +313,7 @@
 
         .game-over p {
             font-size: 24px;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             color: #666;
         }
 
@@ -361,7 +342,311 @@
             transform: scale(1.1);
         }
 
-        /* MODAL */
+        #editorHub {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            z-index: 998;
+            flex-direction: column;
+        }
+
+        .editor-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            padding: 80px 30px 30px;
+        }
+
+        .editor-tab {
+            padding: 15px 40px;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            border-radius: 15px;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .editor-tab.active {
+            background: white;
+            color: #667eea;
+        }
+
+        .editor-content {
+            display: none;
+            padding: 20px;
+            height: calc(100% - 200px);
+            overflow-y: auto;
+        }
+
+        .editor-content.active {
+            display: block;
+        }
+
+        .search-box {
+            max-width: 600px;
+            margin: 0 auto 30px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 20px;
+            font-size: 18px;
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+        }
+
+        .levels-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .level-item {
+            background: white;
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .level-item:hover {
+            transform: translateY(-5px);
+        }
+
+        .level-item h3 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .my-levels-list {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .my-level-card {
+            background: white;
+            padding: 20px;
+            border-radius: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .my-level-info h3 {
+            font-size: 22px;
+            color: #333;
+        }
+
+        .my-level-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .action-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            color: white;
+        }
+
+        .action-btn.play { background: #4ecdc4; }
+        .action-btn.edit { background: #ffd93d; color: #333; }
+        .action-btn.clone { background: #6bcf7f; }
+        .action-btn.publish { background: #f093fb; }
+        .action-btn.rename { background: #667eea; }
+
+        .action-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .create-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 40px;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+
+        .create-btn:hover {
+            transform: scale(1.1) rotate(90deg);
+        }
+
+        #levelEditor {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #2c3e50;
+            z-index: 997;
+            flex-direction: column;
+        }
+
+        .editor-toolbar {
+            background: #34495e;
+            padding: 15px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .toolbar-btn {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .toolbar-btn:hover {
+            background: #764ba2;
+        }
+
+        .toolbar-btn.success { background: #2ecc71; }
+        .toolbar-btn.danger { background: #e74c3c; }
+
+        .level-name-input {
+            padding: 10px 15px;
+            font-size: 16px;
+            border: none;
+            border-radius: 10px;
+            flex: 1;
+            max-width: 300px;
+        }
+
+        .editor-canvas {
+            flex: 1;
+            position: relative;
+            overflow: auto;
+            background: linear-gradient(to bottom, #87ceeb 0%, #e0f6ff 100%);
+        }
+
+        .editor-grid {
+            position: absolute;
+            width: 5000px;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0,0,0,0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
+
+        .editor-ground {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 5000px;
+            height: 50px;
+            background: #4a90e2;
+        }
+
+        .placed-obstacle {
+            position: absolute;
+            border-radius: 5px;
+            cursor: move;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+        }
+
+        .placed-obstacle.spike {
+            background: #ff6b6b;
+            width: 40px;
+            height: 40px;
+        }
+
+        .placed-obstacle.block {
+            background: #4ecdc4;
+            width: 50px;
+            height: 50px;
+        }
+
+        .placed-coin {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: gold;
+            border-radius: 50%;
+            cursor: move;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .obstacle-palette {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+
+        .obstacle-palette h4 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .palette-item {
+            width: 60px;
+            height: 60px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+        }
+
+        .palette-item:hover {
+            transform: scale(1.1);
+        }
+
+        .palette-item.spike { background: #ff6b6b; }
+        .palette-item.block { background: #4ecdc4; }
+        .palette-item.coin { background: gold; color: #333; }
+
         .modal {
             display: none;
             position: absolute;
@@ -372,7 +657,7 @@
             padding: 40px;
             border-radius: 30px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-            z-index: 1001;
+            z-index: 2000;
             text-align: center;
             max-width: 500px;
         }
@@ -383,17 +668,24 @@
             color: #333;
         }
 
-        .modal p {
-            font-size: 18px;
-            color: #666;
-            line-height: 1.6;
+        .modal input, .modal select {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            font-size: 16px;
+            border: 2px solid #667eea;
+            border-radius: 10px;
         }
 
-        .close-modal {
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
             margin-top: 20px;
+        }
+
+        .modal-btn {
             padding: 10px 30px;
-            background: #667eea;
-            color: white;
             border: none;
             border-radius: 10px;
             font-size: 18px;
@@ -401,96 +693,47 @@
             transition: all 0.3s ease;
         }
 
-        .close-modal:hover {
+        .modal-btn.primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .modal-btn.secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .modal-btn:hover {
             transform: scale(1.1);
+        }
+
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1999;
         }
     </style>
 </head>
-    <!-- EDITOR (CREATE / SEARCH / LIST) -->
-<div id="editorPanel" style="display:none; z-index:2000;">
-  <div id="editorOverlay" style="position:fixed; inset:0; background:rgba(0,0,0,0.6);"></div>
-  <div id="editorWindow" style="position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); width:90%; max-width:1000px; height:80vh; background:linear-gradient(180deg,#fff,#f7f7fb); border-radius:20px; overflow:hidden; box-shadow:0 30px 80px rgba(0,0,0,0.4); display:flex; gap:20px;">
-    <!-- Sidebar -->
-    <aside style="width:320px; padding:20px; display:flex; flex-direction:column; gap:12px; background:linear-gradient(180deg,#f0f4ff,#ffffff);">
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <h3 style="margin:0">Editor</h3>
-        <button id="closeEditor" style="border:none;background:#fff;padding:8px 12px;border-radius:10px;cursor:pointer;">✕</button>
-      </div>
-
-      <div>
-        <input id="searchInput" placeholder="Buscar niveles por nombre..." style="width:100%; padding:10px; border-radius:10px; border:1px solid #e0e0e0;">
-      </div>
-
-      <div style="display:flex; gap:8px;">
-        <button id="tabSearch" class="editor-tab" data-tab="search" style="flex:1;padding:10px;border-radius:10px;border:none;cursor:pointer;">Buscar</button>
-        <button id="tabCreate" class="editor-tab" data-tab="create" style="flex:1;padding:10px;border-radius:10px;border:none;cursor:pointer;background:linear-gradient(90deg,#f093fb,#f5576c);color:#fff;">Crear</button>
-      </div>
-
-      <div id="yourLevelsList" style="flex:1; overflow:auto; border-radius:10px; padding:8px; background:rgba(255,255,255,0.4);">
-        <!-- Aquí se llenan tus niveles locales -->
-      </div>
-
-      <div style="display:flex; gap:8px; align-items:center;">
-        <button id="createNewLevelBtn" style="flex:1;padding:12px;border-radius:12px;border:none; cursor:pointer; background:#4a90e2;color:white;">Crear nuevo</button>
-        <button id="syncBtn" style="padding:8px;border-radius:10px;border:none;cursor:pointer;">Publicar</button>
-      </div>
-    </aside>
-
-    <!-- Main area: editor/tester -->
-    <main style="flex:1; padding:20px; display:flex; flex-direction:column; gap:12px;">
-      <div style="display:flex; gap:12px; align-items:center;">
-        <input id="editorLevelName" placeholder="Nombre del nivel" style="flex:1;padding:10px;border-radius:10px;border:1px solid #ddd;">
-        <select id="editorDifficulty" style="padding:10px;border-radius:10px;border:1px solid #ddd;">
-          <option value="😊">😊 Fácil</option>
-          <option value="😐">😐 Medio</option>
-          <option value="😠">😠 Difícil</option>
-          <option value="😱">😱 Extremo</option>
-          <option value="👹">👹 Infernal</option>
-        </select>
-        <button id="saveLevelBtn" style="padding:10px 16px;border-radius:10px;border:none;background:linear-gradient(90deg,#7bd389,#49c3a6);cursor:pointer;color:#fff;">Guardar</button>
-        <button id="testLevelBtn" style="padding:10px 16px;border-radius:10px;border:none;background:#333;cursor:pointer;color:#fff;">Test</button>
-      </div>
-
-      <div id="editorCanvasArea" style="flex:1; background:#eef2ff; border-radius:12px; display:flex; align-items:center; justify-content:center;">
-        <!-- Aquí se puede renderizar una vista previa simple del nivel / parámetros -->
-        <div id="editorPreview">Vista previa del nivel (mock)</div>
-      </div>
-
-      <div style="display:flex; gap:8px; justify-content:flex-end;">
-        <button id="cloneLevelBtn" style="padding:10px 14px;border-radius:10px;border:none;cursor:pointer;">Clonar</button>
-        <button id="publishLevelBtn" style="padding:10px 14px;border-radius:10px;border:none;background:linear-gradient(90deg,#f093fb,#f5576c);cursor:pointer;color:#fff;">Publicar</button>
-      </div>
-
-      <div id="editorLog" style="height:80px; overflow:auto; font-size:13px; color:#444; background:#fff; border-radius:8px; padding:8px; border:1px solid #eee;"></div>
-    </main>
-  </div>
-</div>
-
 <body>
-    <!-- MENÚ PRINCIPAL -->
     <div id="menu">
-        <img id="logo" src="CheometryDashLogo.png" alt="Cheometry Dash">
+        <div id="logo">🎮 CHEOMETRY DASH</div>
         
         <div class="menu-buttons">
-            <button class="menu-btn" id="editBtn">
-                <img src="Edit.png" alt="Edit">
-            </button>
-            <button class="menu-btn" id="playBtn">
-                <img src="Play.png" alt="Play">
-            </button>
+            <button class="menu-btn" id="editBtn">✏️</button>
+            <button class="menu-btn" id="playBtn">▶️</button>
         </div>
         
         <div class="menu-buttons">
-            <button class="menu-btn settings-btn" id="settingsBtn">
-                <img src="Settings.png" alt="Settings">
-            </button>
-            <button class="menu-btn settings-btn" id="creditsBtn">
-                <img src="Credits.png" alt="Credits">
-            </button>
+            <button class="menu-btn settings-btn" id="settingsBtn">⚙️</button>
+            <button class="menu-btn settings-btn" id="creditsBtn">ℹ️</button>
         </div>
     </div>
 
-    <!-- SELECTOR DE NIVELES -->
     <div id="levelSelector">
         <button class="back-btn" id="backToMenu">← Volver</button>
         
@@ -500,813 +743,972 @@
             
             <div id="levelCards"></div>
         </div>
+        
+        <div class="level-dots" id="levelDots"></div>
     </div>
 
-    <!-- JUEGO 3D -->
+    <div id="editorHub">
+        <button class="back-btn" id="backFromEditor">← Volver</button>
+        
+        <div class="editor-tabs">
+            <button class="editor-tab active" data-tab="search">🔍 Buscar Niveles</button>
+            <button class="editor-tab" data-tab="create">📝 Mis Niveles</button>
+        </div>
+
+        <div class="editor-content active" id="searchContent">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Buscar niveles por nombre...">
+            </div>
+            <div class="levels-grid" id="searchResults"></div>
+        </div>
+
+        <div class="editor-content" id="createContent">
+            <div class="my-levels-list" id="myLevelsList"></div>
+            <button class="create-btn" id="createNewLevel">+</button>
+        </div>
+    </div>
+
+    <div id="levelEditor">
+        <div class="editor-toolbar">
+            <button class="toolbar-btn danger" id="exitEditor">← Salir</button>
+            <input type="text" class="level-name-input" id="editorLevelName" placeholder="Nombre del nivel">
+            <button class="toolbar-btn" id="testLevel">▶ Probar</button>
+            <button class="toolbar-btn success" id="saveLevel">💾 Guardar</button>
+            <button class="toolbar-btn" id="clearAll">🗑️ Limpiar</button>
+        </div>
+        
+        <div class="editor-canvas" id="editorCanvas">
+            <div class="editor-grid"></div>
+            <div class="editor-ground"></div>
+            <div class="obstacle-palette">
+                <h4>Objetos</h4>
+                <div class="palette-item spike" data-type="spike">▲</div>
+                <div class="palette-item block" data-type="block">■</div>
+                <div class="palette-item coin" data-type="coin">🪙</div>
+            </div>
+        </div>
+    </div>
+
     <div id="gameCanvas"></div>
     <div class="game-ui" id="gameUI">
         <div id="levelNameDisplay"></div>
         <div id="progressDisplay">Progreso: 0%</div>
+        <div class="coins-collected" id="coinsDisplay">🪙 0/3</div>
     </div>
 
-    <!-- GAME OVER -->
     <div class="game-over" id="gameOver">
         <h2 id="gameOverTitle">¡Fallaste!</h2>
         <p id="gameOverProgress">Progreso: 0%</p>
+        <p id="gameOverCoins">🪙 Monedas: 0/3</p>
         <button class="restart-btn" id="restartBtn">Reintentar</button>
         <button class="menu-return-btn" id="menuReturnBtn">Menú</button>
     </div>
 
-    <!-- MODAL AJUSTES -->
+    <div class="overlay" id="overlay"></div>
+    
+    <div class="modal" id="publishModal">
+        <h2>📢 Publicar Nivel</h2>
+        <select id="publishDifficulty">
+            <option value="😊">😊 Fácil</option>
+            <option value="😐">😐 Medio</option>
+            <option value="😠">😠 Difícil</option>
+            <option value="😱">😱 Imposible</option>
+            <option value="👹">👹 Demonio</option>
+        </select>
+        <div class="modal-buttons">
+            <button class="modal-btn primary" id="confirmPublish">Publicar</button>
+            <button class="modal-btn secondary" id="cancelPublish">Cancelar</button>
+        </div>
+    </div>
+
+    <div class="modal" id="renameModal">
+        <h2>✏️ Renombrar Nivel</h2>
+        <input type="text" id="renameInput" placeholder="Nuevo nombre">
+        <div class="modal-buttons">
+            <button class="modal-btn primary" id="confirmRename">Guardar</button>
+            <button class="modal-btn secondary" id="cancelRename">Cancelar</button>
+        </div>
+    </div>
+
     <div class="modal" id="settingsModal">
         <h2>⚙️ Ajustes</h2>
         <p>Próximamente: Control de volumen, efectos visuales y más opciones de personalización.</p>
-        <button class="close-modal" id="closeSettings">Cerrar</button>
+        <button class="modal-btn primary" id="closeSettings">Cerrar</button>
     </div>
 
-    <!-- MODAL CRÉDITOS -->
     <div class="modal" id="creditsModal">
         <h2>🎮 Créditos</h2>
-        <p>
-            <strong>Cheometry Dash</strong><br><br>
-            Desarrollado con ❤️<br>
-            Motor gráfico: Three.js<br>
-            Inspirado en Geometry Dash<br><br>
-            ¡Gracias por jugar!
-        </p>
-        <button class="close-modal" id="closeCredits">Cerrar</button>
+        <p><strong>Cheometry Dash</strong><br><br>Desarrollado con ❤️<br>Motor gráfico: Three.js<br>Inspirado en Geometry Dash<br><br>¡Gracias por jugar!</p>
+        <button class="modal-btn primary" id="closeCredits">Cerrar</button>
     </div>
 
     <script>
-        // DATOS DE NIVELES
-        const levels = [
-            { name: "Stereo Madness +", difficulty: "😊", coins: 0, progress: 0, speed: 0.15, obstacles: 15, music: "StereoMadness.mp3" },
-            { name: "Pack on Pack", difficulty: "😊", coins: 0, progress: 0, speed: 0.17, obstacles: 18, music: "PackOnPack.mp3" },
-            { name: "Totangeist", difficulty: "😐", coins: 0, progress: 0, speed: 0.19, obstacles: 22, music: "Totangeist.mp3" },
-            { name: "Ply out", difficulty: "😐", coins: 0, progress: 0, speed: 0.21, obstacles: 25, music: "PlyOut.mp3" },
-            { name: "Sermón after Sermón", difficulty: "😐", coins: 0, progress: 0, speed: 0.23, obstacles: 28, music: "SermonAfterSermon.mp3" },
-            { name: "Cant go out", difficulty: "😠", coins: 0, progress: 0, speed: 0.25, obstacles: 32, music: "CantGoOut.mp3" },
-            { name: "Toca Césped", difficulty: "😠", coins: 0, progress: 0, speed: 0.27, obstacles: 35, music: "TocaCesped.mp3" },
-            { name: "Time No Machine", difficulty: "😠", coins: 0, progress: 0, speed: 0.29, obstacles: 38, music: "TimeNoMachine.mp3" },
-            { name: "Aquí no hay Cycles", difficulty: "😱", coins: 0, progress: 0, speed: 0.31, obstacles: 42, music: "AquiNoHayCycles.mp3" },
-            { name: "XNotStep", difficulty: "😱", coins: 0, progress: 0, speed: 0.33, obstacles: 45, music: "XNotStep.mp3" },
-            { name: "PutterFunk", difficulty: "😱", coins: 0, progress: 0, speed: 0.35, obstacles: 48, music: "PutterFunk.mp3" },
-            { name: "Theory of the Big Bang", difficulty: "😱", coins: 0, progress: 0, speed: 0.37, obstacles: 52, music: "TheoryOfTheBigBang.mp3" },
-            { name: "Iker Adventures", difficulty: "👹", coins: 0, progress: 0, speed: 0.39, obstacles: 55, music: "IkerAdventures.mp3" },
-            { name: "Electropinasticks", difficulty: "👹", coins: 0, progress: 0, speed: 0.41, obstacles: 58, music: "Electropinasticks.mp3" },
-            { name: "FingerPam", difficulty: "👹", coins: 0, progress: 0, speed: 0.43, obstacles: 62, music: "FingerPam.mp3" },
-            { name: "Dash", difficulty: "👹", coins: 0, progress: 0, speed: 0.5, obstacles: 70, music: "Dash.mp3" }
+        // Esperar a que Firebase se cargue completamente
+        let database = null;
+        let firebaseReady = false;
+
+        // Función para inicializar Firebase
+        function initializeFirebase() {
+            try {
+                // Verificar que Firebase esté disponible
+                if (typeof firebase === 'undefined') {
+                    console.error('❌ Firebase SDK no se cargó correctamente');
+                    return false;
+                }
+
+                const firebaseConfig = {
+                    apiKey: "AIzaSyBp5c5G0lb_t5mFoK49CXfkLbWlmnRBtfo",
+                    authDomain: "cheometry-dash.firebaseapp.com",
+                    databaseURL: "https://cheometry-dash-default-rtdb.firebaseio.com",
+                    projectId: "cheometry-dash",
+                    storageBucket: "cheometry-dash.firebasestorage.app",
+                    messagingSenderId: "882791750468",
+                    appId: "1:882791750468:web:c5c19b5d6d46d2430e9511",
+                    measurementId: "G-K9BPCEWEJZ"
+                };
+
+                // Inicializar solo si no existe ya
+                if (!firebase.apps.length) {
+                    firebase.initializeApp(firebaseConfig);
+                }
+                
+                database = firebase.database();
+                firebaseReady = true;
+                console.log('✅ Firebase conectado correctamente a:', firebaseConfig.databaseURL);
+                return true;
+            } catch (error) {
+                console.error('❌ Error inicializando Firebase:', error);
+                return false;
+            }
+        }
+
+        // Intentar inicializar Firebase cuando la página cargue
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                if (initializeFirebase()) {
+                    console.log('🔥 Firebase listo para usar');
+                } else {
+                    console.warn('⚠️ Firebase no disponible, trabajando en modo local');
+                }
+            }, 100);
+        });
+
+        const officialLevels = [
+            { name: "Stereo Madness +", difficulty: "😊", coins: 0, progress: 0, speed: 0.15, obstacles: [], coinPositions: [300, 600, 900] },
+            { name: "Pack on Pack", difficulty: "😊", coins: 0, progress: 0, speed: 0.17, obstacles: [], coinPositions: [350, 700, 1050] },
+            { name: "Totangeist", difficulty: "😐", coins: 0, progress: 0, speed: 0.19, obstacles: [], coinPositions: [400, 750, 1100] },
+            { name: "Ply out", difficulty: "😐", coins: 0, progress: 0, speed: 0.21, obstacles: [], coinPositions: [380, 800, 1150] },
+            { name: "Sermón after Sermón", difficulty: "😐", coins: 0, progress: 0, speed: 0.23, obstacles: [], coinPositions: [420, 820, 1200] },
+            { name: "Cant go out", difficulty: "😠", coins: 0, progress: 0, speed: 0.25, obstacles: [], coinPositions: [440, 880, 1280] },
+            { name: "Toca Césped", difficulty: "😠", coins: 0, progress: 0, speed: 0.27, obstacles: [], coinPositions: [460, 920, 1320] },
+            { name: "Time No Machine", difficulty: "😠", coins: 0, progress: 0, speed: 0.29, obstacles: [], coinPositions: [480, 960, 1360] },
+            { name: "Aquí no hay Cycles", difficulty: "😱", coins: 0, progress: 0, speed: 0.31, obstacles: [], coinPositions: [500, 1000, 1400] }
         ];
 
         let currentLevelIndex = 0;
+        let gameState = {
+            scene: null,
+            camera: null,
+            renderer: null,
+            player: null,
+            obstacles: [],
+            coins: [],
+            isJumping: false,
+            velocity: 0,
+            isGameOver: false,
+            currentLevel: null,
+            collectedCoins: 0
+        };
 
-        // MÚSICA
-        function initMenuMusic() {
-            if (!menuMusic) {
-                menuMusic = new Audio('Menu.mp3');
-                menuMusic.loop = true;
-                menuMusic.volume = 0.5;
-            }
+        let editorState = {
+            currentLevel: null,
+            placedObjects: [],
+            selectedType: null
+        };
+
+        loadProgress();
+
+        function loadProgress() {
+            const saved = JSON.parse(localStorage.getItem('cheometryProgress') || '{}');
+            officialLevels.forEach((level, i) => {
+                if (saved[level.name]) {
+                    level.progress = saved[level.name].progress || 0;
+                    level.coins = saved[level.name].coins || 0;
+                }
+                if (!level.obstacles || level.obstacles.length === 0) {
+                    level.obstacles = generateLevelObstacles(i);
+                }
+            });
         }
 
-        function playMenuMusic() {
-            initMenuMusic();
-            if (levelMusic) {
-                levelMusic.pause();
-                levelMusic.currentTime = 0;
-            }
-            menuMusic.play().catch(e => console.log('Error playing menu music:', e));
+        function saveProgress() {
+            const data = {};
+            officialLevels.forEach(level => {
+                data[level.name] = {
+                    progress: level.progress,
+                    coins: level.coins
+                };
+            });
+            localStorage.setItem('cheometryProgress', JSON.stringify(data));
         }
 
-        function stopMenuMusic() {
-            if (menuMusic) {
-                menuMusic.pause();
+        function generateLevelObstacles(levelIndex) {
+            const obstacles = [];
+            const spacing = 200 + levelIndex * 10;
+            const count = 15 + levelIndex * 3;
+            
+            for (let i = 0; i < count; i++) {
+                obstacles.push({
+                    type: Math.random() > 0.5 ? 'spike' : 'block',
+                    x: 200 + i * spacing + Math.random() * 50,
+                    y: 0,
+                    width: Math.random() > 0.5 ? 40 : 50,
+                    height: Math.random() > 0.5 ? 40 : 50
+                });
             }
+            return obstacles;
         }
 
-        function playLevelMusic(musicFile) {
-            stopMenuMusic();
-            if (levelMusic) {
-                levelMusic.pause();
-            }
-            levelMusic = new Audio(musicFile);
-            levelMusic.loop = true;
-            levelMusic.volume = 0.6;
-            levelMusic.play().catch(e => console.log('Error playing level music:', e));
-        }
+        renderLevelCards();
 
-        function stopLevelMusic() {
-            if (levelMusic) {
-                levelMusic.pause();
-                levelMusic.currentTime = 0;
-            }
-        }
-
-        // CREAR TARJETAS DE NIVELES
-        function createLevelCards() {
+        function renderLevelCards() {
             const container = document.getElementById('levelCards');
-            levels.forEach((level, index) => {
+            const dots = document.getElementById('levelDots');
+            container.innerHTML = '';
+            dots.innerHTML = '';
+
+            officialLevels.forEach((level, index) => {
                 const card = document.createElement('div');
-                card.className = 'level-card' + (index === 0 ? ' active' : '');
+                card.className = `level-card ${index === currentLevelIndex ? 'active' : ''}`;
                 card.innerHTML = `
                     <div class="level-header">
                         <span class="difficulty-emoji">${level.difficulty}</span>
                         <span class="level-name">${level.name}</span>
                     </div>
-                    <div class="coins-info">🪙 Monedas: ${level.coins}/3</div>
+                    <div class="coins-info">🪙 ${level.coins}/3</div>
                     <div class="progress-container">
-                        <div class="progress-label">Progreso del nivel</div>
                         <div class="progress-bar">
                             <div class="progress-fill" style="width: ${level.progress}%">
                                 ${level.progress}%
                             </div>
                         </div>
-                        <div class="level-dots">
-                            ${levels.map((_, i) => `<div class="dot ${i === index ? 'active' : ''}"></div>`).join('')}
-                        </div>
-                        <button class="play-level-btn" onclick="startLevel(${index})">▶ JUGAR</button>
+                        <button class="play-level-btn" onclick="startLevel(${index})">¡JUGAR!</button>
+                    </div>
+                `;
+                container.appendChild(card);
+
+                const dot = document.createElement('div');
+                dot.className = `dot ${index === currentLevelIndex ? 'active' : ''}`;
+                dots.appendChild(dot);
+            });
+        }
+
+        document.getElementById('playBtn').onclick = () => {
+            document.getElementById('menu').style.display = 'none';
+            document.getElementById('levelSelector').style.display = 'flex';
+        };
+
+        document.getElementById('backToMenu').onclick = () => {
+            document.getElementById('levelSelector').style.display = 'none';
+            document.getElementById('menu').style.display = 'flex';
+        };
+
+        document.getElementById('prevLevel').onclick = () => {
+            currentLevelIndex = (currentLevelIndex - 1 + officialLevels.length) % officialLevels.length;
+            renderLevelCards();
+        };
+
+        document.getElementById('nextLevel').onclick = () => {
+            currentLevelIndex = (currentLevelIndex + 1) % officialLevels.length;
+            renderLevelCards();
+        };
+
+        function startLevel(index) {
+            const level = officialLevels[index];
+            gameState.currentLevel = level;
+            gameState.collectedCoins = 0;
+            
+            document.getElementById('levelSelector').style.display = 'none';
+            document.getElementById('gameCanvas').style.display = 'block';
+            document.getElementById('gameUI').style.display = 'block';
+            document.getElementById('levelNameDisplay').textContent = level.name;
+            
+            initGame(level);
+        }
+
+        function initGame(level) {
+            const container = document.getElementById('gameCanvas');
+            container.innerHTML = '';
+
+            gameState.scene = new THREE.Scene();
+            gameState.scene.background = new THREE.Color(0x87ceeb);
+
+            gameState.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            gameState.camera.position.set(0, 3, 10);
+
+            gameState.renderer = new THREE.WebGLRenderer({ antialias: true });
+            gameState.renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(gameState.renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            gameState.scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 10, 5);
+            gameState.scene.add(directionalLight);
+
+            const groundGeometry = new THREE.BoxGeometry(2000, 0.5, 10);
+            const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x4a90e2 });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.position.y = -2;
+            gameState.scene.add(ground);
+
+            const playerGeometry = new THREE.BoxGeometry(1, 1, 1);
+            const playerMaterial = new THREE.MeshStandardMaterial({ color: 0xff6b6b });
+            gameState.player = new THREE.Mesh(playerGeometry, playerMaterial);
+            gameState.player.position.set(-5, 0, 0);
+            gameState.scene.add(gameState.player);
+
+            gameState.obstacles = [];
+            level.obstacles.forEach(obs => {
+                const geometry = new THREE.BoxGeometry(obs.width / 25, obs.height / 25, 1);
+                const material = new THREE.MeshStandardMaterial({ 
+                    color: obs.type === 'spike' ? 0xff6b6b : 0x4ecdc4 
+                });
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.set(obs.x / 50 - 5, obs.y / 50, 0);
+                mesh.userData = { type: obs.type };
+                gameState.scene.add(mesh);
+                gameState.obstacles.push(mesh);
+            });
+
+            gameState.coins = [];
+            level.coinPositions.forEach(x => {
+                const geometry = new THREE.CylinderGeometry(0.3, 0.3, 0.1, 16);
+                const material = new THREE.MeshStandardMaterial({ color: 0xffd700 });
+                const coin = new THREE.Mesh(geometry, material);
+                coin.rotation.x = Math.PI / 2;
+                coin.position.set(x / 50 - 5, 1, 0);
+                coin.userData = { collected: false };
+                gameState.scene.add(coin);
+                gameState.coins.push(coin);
+            });
+
+            gameState.isJumping = false;
+            gameState.velocity = 0;
+            gameState.isGameOver = false;
+            document.getElementById('gameOver').style.display = 'none';
+
+            animate();
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if ((e.code === 'Space' || e.code === 'ArrowUp') && !gameState.isJumping && !gameState.isGameOver) {
+                gameState.isJumping = true;
+                gameState.velocity = 0.15;
+            }
+        });
+
+        document.getElementById('gameCanvas').addEventListener('click', () => {
+            if (!gameState.isJumping && !gameState.isGameOver) {
+                gameState.isJumping = true;
+                gameState.velocity = 0.15;
+            }
+        });
+
+        function animate() {
+            if (gameState.isGameOver) return;
+
+            requestAnimationFrame(animate);
+
+            if (gameState.isJumping) {
+                gameState.player.position.y += gameState.velocity;
+                gameState.velocity -= 0.008;
+
+                if (gameState.player.position.y <= 0) {
+                    gameState.player.position.y = 0;
+                    gameState.isJumping = false;
+                    gameState.velocity = 0;
+                }
+            }
+
+            const speed = gameState.currentLevel.speed;
+            gameState.obstacles.forEach(obs => {
+                obs.position.x -= speed;
+                
+                if (obs.position.x < -10) {
+                    obs.position.x += 50;
+                }
+
+                const distance = gameState.player.position.distanceTo(obs.position);
+                if (distance < 0.8) {
+                    endGame();
+                }
+            });
+
+            gameState.coins.forEach(coin => {
+                coin.position.x -= speed;
+                coin.rotation.z += 0.05;
+                
+                if (!coin.userData.collected) {
+                    const distance = gameState.player.position.distanceTo(coin.position);
+                    if (distance < 0.8) {
+                        coin.userData.collected = true;
+                        gameState.scene.remove(coin);
+                        gameState.collectedCoins++;
+                        document.getElementById('coinsDisplay').textContent = `🪙 ${gameState.collectedCoins}/3`;
+                    }
+                }
+            });
+
+            gameState.camera.position.x = gameState.player.position.x + 5;
+
+            const progress = Math.min(100, (gameState.camera.position.x / 15) * 100);
+            document.getElementById('progressDisplay').textContent = `Progreso: ${Math.floor(progress)}%`;
+
+            if (progress >= 100) {
+                winGame();
+            }
+
+            gameState.renderer.render(gameState.scene, gameState.camera);
+        }
+
+        function endGame() {
+            gameState.isGameOver = true;
+            const progress = Math.min(100, (gameState.camera.position.x / 15) * 100);
+            
+            if (progress > gameState.currentLevel.progress) {
+                gameState.currentLevel.progress = Math.floor(progress);
+            }
+            if (gameState.collectedCoins > gameState.currentLevel.coins) {
+                gameState.currentLevel.coins = gameState.collectedCoins;
+            }
+            saveProgress();
+
+            document.getElementById('gameOverTitle').textContent = '¡Fallaste!';
+            document.getElementById('gameOverProgress').textContent = `Progreso: ${Math.floor(progress)}%`;
+            document.getElementById('gameOverCoins').textContent = `🪙 Monedas: ${gameState.collectedCoins}/3`;
+            document.getElementById('gameOver').style.display = 'block';
+        }
+
+        function winGame() {
+            gameState.isGameOver = true;
+            gameState.currentLevel.progress = 100;
+            if (gameState.collectedCoins > gameState.currentLevel.coins) {
+                gameState.currentLevel.coins = gameState.collectedCoins;
+            }
+            saveProgress();
+
+            document.getElementById('gameOverTitle').textContent = '¡Victoria!';
+            document.getElementById('gameOverProgress').textContent = 'Completado: 100%';
+            document.getElementById('gameOverCoins').textContent = `🪙 Monedas: ${gameState.collectedCoins}/3`;
+            document.getElementById('gameOver').style.display = 'block';
+        }
+
+        document.getElementById('restartBtn').onclick = () => {
+            document.getElementById('gameOver').style.display = 'none';
+            initGame(gameState.currentLevel);
+        };
+
+        document.getElementById('menuReturnBtn').onclick = () => {
+            document.getElementById('gameOver').style.display = 'none';
+            document.getElementById('gameCanvas').style.display = 'none';
+            document.getElementById('gameUI').style.display = 'none';
+            document.getElementById('menu').style.display = 'flex';
+            renderLevelCards();
+        };
+
+        document.getElementById('editBtn').onclick = () => {
+            document.getElementById('menu').style.display = 'none';
+            document.getElementById('editorHub').style.display = 'flex';
+            loadPublishedLevels();
+            loadMyLevels();
+        };
+
+        document.getElementById('backFromEditor').onclick = () => {
+            document.getElementById('editorHub').style.display = 'none';
+            document.getElementById('menu').style.display = 'flex';
+        };
+
+        document.querySelectorAll('.editor-tab').forEach(tab => {
+            tab.onclick = () => {
+                document.querySelectorAll('.editor-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.editor-content').forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(tab.dataset.tab === 'search' ? 'searchContent' : 'createContent').classList.add('active');
+            };
+        });
+
+        let publishedLevels = [];
+
+        function loadPublishedLevels() {
+            if (!firebaseReady || !database) {
+                console.warn('Firebase no disponible, cargando niveles locales');
+                const published = JSON.parse(localStorage.getItem('publishedLevels') || '[]');
+                publishedLevels = published;
+                renderSearchResults();
+                return;
+            }
+            
+            // Cargar desde Firebase
+            database.ref('published-levels').on('value', (snapshot) => {
+                publishedLevels = [];
+                snapshot.forEach((child) => {
+                    publishedLevels.push({ 
+                        id: child.key, 
+                        ...child.val() 
+                    });
+                });
+                console.log(`📥 Cargados ${publishedLevels.length} niveles desde Firebase`);
+                renderSearchResults();
+            }, (error) => {
+                console.error('Error cargando niveles:', error);
+                // Fallback a localStorage
+                const published = JSON.parse(localStorage.getItem('publishedLevels') || '[]');
+                publishedLevels = published;
+                renderSearchResults();
+            });
+        }
+
+        function renderSearchResults(filter = '') {
+            const container = document.getElementById('searchResults');
+            container.innerHTML = '';
+            
+            const filtered = publishedLevels.filter(l => 
+                l.name.toLowerCase().includes(filter.toLowerCase())
+            );
+
+            filtered.forEach(level => {
+                const item = document.createElement('div');
+                item.className = 'level-item';
+                const isLocal = level.id && level.id.startsWith('local_');
+                item.innerHTML = `
+                    <h3>${level.difficulty} ${level.name}</h3>
+                    <p>Por: ${level.author || 'Jugador'} ${isLocal ? '(Local)' : ''}</p>
+                    <p style="color: #999; font-size: 14px;">Obstáculos: ${level.obstacles ? level.obstacles.length : 0} | Monedas: ${level.coinPositions ? level.coinPositions.length : 0}</p>
+                `;
+                item.onclick = () => playCustomLevel(level);
+                container.appendChild(item);
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div style="color: white; text-align: center; padding: 40px;">
+                        <p style="font-size: 24px; margin-bottom: 20px;">📭</p>
+                        <p>No hay niveles publicados aún.</p>
+                        <p style="margin-top: 10px; opacity: 0.8;">¡Sé el primero en publicar!</p>
+                        ${!firebaseReady ? '<p style="margin-top: 20px; color: #ffd93d;">⚠️ Firebase no conectado</p>' : ''}
+                    </div>
+                `;
+            }
+        }
+
+        document.getElementById('searchInput').oninput = (e) => {
+            renderSearchResults(e.target.value);
+        };
+
+        function playCustomLevel(level) {
+            gameState.currentLevel = level;
+            gameState.collectedCoins = 0;
+            
+            document.getElementById('editorHub').style.display = 'none';
+            document.getElementById('gameCanvas').style.display = 'block';
+            document.getElementById('gameUI').style.display = 'block';
+            document.getElementById('levelNameDisplay').textContent = level.name;
+            
+            initGame(level);
+        }
+
+        function loadMyLevels() {
+            const myLevels = JSON.parse(localStorage.getItem('myLevels') || '[]');
+            const container = document.getElementById('myLevelsList');
+            container.innerHTML = '';
+
+            myLevels.forEach((level, index) => {
+                const card = document.createElement('div');
+                card.className = 'my-level-card';
+                card.innerHTML = `
+                    <div class="my-level-info">
+                        <h3>${level.name}</h3>
+                    </div>
+                    <div class="my-level-actions">
+                        <button class="action-btn play" onclick="playMyLevel(${index})">Jugar</button>
+                        <button class="action-btn edit" onclick="editLevel(${index})">Editar</button>
+                        <button class="action-btn clone" onclick="cloneLevel(${index})">Clonar</button>
+                        <button class="action-btn publish" onclick="publishLevel(${index})">Publicar</button>
+                        <button class="action-btn rename" onclick="renameLevel(${index})">Renombrar</button>
                     </div>
                 `;
                 container.appendChild(card);
             });
         }
 
-        // NAVEGACIÓN DE NIVELES
-        function showLevel(index) {
-            const cards = document.querySelectorAll('.level-card');
-            cards.forEach((card, i) => {
-                card.classList.toggle('active', i === index);
-            });
-            currentLevelIndex = index;
-        }
+        window.playMyLevel = (index) => {
+            const myLevels = JSON.parse(localStorage.getItem('myLevels') || '[]');
+            playCustomLevel(myLevels[index]);
+        };
 
-        document.getElementById('prevLevel').addEventListener('click', () => {
-            currentLevelIndex = (currentLevelIndex - 1 + levels.length) % levels.length;
-            showLevel(currentLevelIndex);
-        });
-
-        document.getElementById('nextLevel').addEventListener('click', () => {
-            currentLevelIndex = (currentLevelIndex + 1) % levels.length;
-            showLevel(currentLevelIndex);
-        });
-
-        // MENÚ PRINCIPAL
-        document.getElementById('playBtn').addEventListener('click', () => {
-            document.getElementById('menu').style.display = 'none';
-            document.getElementById('levelSelector').style.display = 'flex';
-        });
-
-        document.getElementById('backToMenu').addEventListener('click', () => {
-            document.getElementById('levelSelector').style.display = 'none';
-            document.getElementById('menu').style.display = 'flex';
-        });
-
-        document.getElementById('settingsBtn').addEventListener('click', () => {
-            document.getElementById('settingsModal').style.display = 'block';
-        });
-
-        document.getElementById('creditsBtn').addEventListener('click', () => {
-            document.getElementById('creditsModal').style.display = 'block';
-        });
-
-        document.getElementById('closeSettings').addEventListener('click', () => {
-            document.getElementById('settingsModal').style.display = 'none';
-        });
-
-        document.getElementById('closeCredits').addEventListener('click', () => {
-            document.getElementById('creditsModal').style.display = 'none';
-        });
-
-        // JUEGO 3D CON THREE.JS
-        let scene, camera, renderer, player, obstacles = [], ground;
-        let gameRunning = false;
-        let currentLevel;
-        let gameSpeed = 0.1;
-        let playerVelocity = 0;
-        let isJumping = false;
-        let distanceTraveled = 0;
-        let levelLength = 100;
-        let menuMusic, levelMusic;
-        let isMouseDown = false;
-        let isKeyDown = false;
-
-        function startLevel(index) {
-            currentLevel = levels[index];
-            gameSpeed = currentLevel.speed;
+        window.editLevel = (index) => {
+            const myLevels = JSON.parse(localStorage.getItem('myLevels') || '[]');
+            editorState.currentLevel = { index, ...myLevels[index] };
+            editorState.placedObjects = myLevels[index].obstacles || [];
             
-            document.getElementById('levelSelector').style.display = 'none';
-            document.getElementById('gameCanvas').style.display = 'block';
-            document.getElementById('gameUI').style.display = 'block';
-            document.getElementById('levelNameDisplay').textContent = currentLevel.name;
+            document.getElementById('editorHub').style.display = 'none';
+            document.getElementById('levelEditor').style.display = 'flex';
+            document.getElementById('editorLevelName').value = myLevels[index].name;
+            renderEditor();
+        };
+
+        window.cloneLevel = (index) => {
+            const myLevels = JSON.parse(localStorage.getItem('myLevels') || '[]');
+            const original = myLevels[index];
             
-            playLevelMusic(currentLevel.music);
-            initGame();
-        }
-
-        function initGame() {
-            distanceTraveled = 0;
-            obstacles = [];
+            let cloneNumber = 1;
+            let newName = `${original.name} Clone ${cloneNumber}`;
             
-            const container = document.getElementById('gameCanvas');
-            container.innerHTML = '';
-
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x87ceeb);
-            scene.fog = new THREE.Fog(0x87ceeb, 10, 50);
-
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.x = 0;
-            camera.position.y = 3;
-            camera.position.z = 10;
-            camera.lookAt(0, 0, 0);
-
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.shadowMap.enabled = true;
-            container.appendChild(renderer.domElement);
-
-            // Luces
-            const ambLight = new THREE.AmbientLight(0xffffff, 0.6);
-            scene.add(ambLight);
-
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            dirLight.position.set(5, 10, 5);
-            dirLight.castShadow = true;
-            scene.add(dirLight);
-
-            // Suelo
-            const groundGeo = new THREE.PlaneGeometry(200, 10);
-            const groundMat = new THREE.MeshLambertMaterial({ color: 0x4a90e2 });
-            ground = new THREE.Mesh(groundGeo, groundMat);
-            ground.rotation.x = -Math.PI / 2;
-            ground.position.x = 50;
-            ground.position.y = 0;
-            ground.position.z = 0;
-            ground.receiveShadow = true;
-            scene.add(ground);
-
-            // Jugador (cubo)
-            const playerGeo = new THREE.BoxGeometry(1, 1, 1);
-            const playerMat = new THREE.MeshLambertMaterial({ color: 0xff6b6b });
-            player = new THREE.Mesh(playerGeo, playerMat);
-            player.position.x = -3;
-            player.position.y = 0.5;
-            player.position.z = 0;
-            player.castShadow = true;
-            scene.add(player);
-
-            // Crear obstáculos
-            createObstacles();
-
-            gameRunning = true;
-            gameLoop();
-        }
-
-        function createObstacles() {
-            const colors = [0xffd93d, 0x6bcf7f, 0xff6b9d, 0x4ecdc4];
-            const minDistance = 4; // Distancia mínima entre obstáculos (en unidades 3D)
-            
-            for (let i = 0; i < currentLevel.obstacles; i++) {
-                const type = Math.random() > 0.5 ? 'spike' : 'block';
-                let obstacle;
-                
-                if (type === 'spike') {
-                    const geo = new THREE.ConeGeometry(0.5, 1.5, 4);
-                    const mat = new THREE.MeshLambertMaterial({ color: colors[Math.floor(Math.random() * colors.length)] });
-                    obstacle = new THREE.Mesh(geo, mat);
-                    obstacle.position.y = 0.75;
-                } else {
-                    const height = 1 + Math.random() * 2;
-                    const geo = new THREE.BoxGeometry(1, height, 1);
-                    const mat = new THREE.MeshLambertMaterial({ color: colors[Math.floor(Math.random() * colors.length)] });
-                    obstacle = new THREE.Mesh(geo, mat);
-                    obstacle.position.y = height / 2;
-                }
-                
-                // Calcular distancia asegurando el mínimo
-                const baseDistance = levelLength / currentLevel.obstacles;
-                const finalDistance = Math.max(baseDistance, minDistance);
-                
-                obstacle.position.x = 5 + i * finalDistance;
-                obstacle.position.y = obstacle.position.y;
-                obstacle.position.z = 0;
-                obstacle.castShadow = true;
-                scene.add(obstacle);
-                obstacles.push(obstacle);
+            while (myLevels.some(l => l.name === newName)) {
+                cloneNumber++;
+                newName = `${original.name} Clone ${cloneNumber}`;
             }
-        }
+            
+            const clone = { ...original, name: newName };
+            myLevels.push(clone);
+            localStorage.setItem('myLevels', JSON.stringify(myLevels));
+            loadMyLevels();
+        };
 
-        function gameLoop() {
-            if (!gameRunning) return;
+        let levelToPublish = null;
 
-            // Mover obstáculos y suelo hacia la izquierda
-            obstacles.forEach(obs => {
-                obs.position.x -= gameSpeed;
-                
-                if (obs.position.x < -15) {
-                    obs.position.x = levelLength + 5;
-                }
-
-                // Colisión
-                if (checkCollision(player, obs)) {
-                    gameOver(false);
-                }
-            });
-
-            ground.position.x -= gameSpeed;
-            if (ground.position.x < -50) {
-                ground.position.x = 50;
+        // Función para eliminar todos los nulls y undefined de un objeto
+        function removeNulls(obj) {
+            if (obj === null || obj === undefined) {
+                return undefined;
             }
-
-            // Física del jugador
-            if (isJumping) {
-                playerVelocity -= 0.02;
-                player.position.y += playerVelocity;
-
-                if (player.position.y <= 0.5) {
-                    player.position.y = 0.5;
-                    isJumping = false;
-                    playerVelocity = 0;
-                    
-                    // Saltar automáticamente si se mantiene presionado
-                    if (isMouseDown || isKeyDown) {
-                        isJumping = true;
-                        playerVelocity = 0.35;
+            
+            if (Array.isArray(obj)) {
+                return obj
+                    .map(item => removeNulls(item))
+                    .filter(item => item !== undefined && item !== null);
+            }
+            
+            if (typeof obj === 'object') {
+                const result = {};
+                for (const key in obj) {
+                    if (obj.hasOwnProperty(key)) {
+                        const value = removeNulls(obj[key]);
+                        if (value !== undefined && value !== null) {
+                            result[key] = value;
+                        }
                     }
                 }
-            } else {
-                // Iniciar salto si se presiona y está en el suelo
-                if ((isMouseDown || isKeyDown) && player.position.y <= 0.5) {
-                    isJumping = true;
-                    playerVelocity = 0.35;
+                return result;
+            }
+            
+            return obj;
+        }
+
+        window.publishLevel = (index) => {
+            try {
+                levelToPublish = index;
+                document.getElementById('overlay').style.display = 'block';
+                document.getElementById('publishModal').style.display = 'block';
+            } catch (error) {
+                console.error('Error abriendo modal de publicación:', error);
+                alert('Error al abrir el modal: ' + error.message);
+            }
+        };
+
+        document.getElementById('confirmPublish').onclick = async () => {
+            try {
+                console.log('🔄 Iniciando publicación...');
+                
+                const myLevels = JSON.parse(localStorage.getItem('myLevels') || '[]');
+                
+                if (levelToPublish === null || levelToPublish === undefined) {
+                    throw new Error('No se seleccionó ningún nivel');
                 }
-            }
-
-            // Rotación del jugador
-            player.rotation.z += 0.1;
-
-            // Actualizar progreso
-            distanceTraveled += gameSpeed;
-            const progress = Math.min(Math.floor((distanceTraveled / levelLength) * 100), 100);
-            document.getElementById('progressDisplay').textContent = `Progreso: ${progress}%`;
-
-            if (progress >= 100) {
-                gameOver(true);
-            }
-
-            renderer.render(scene, camera);
-            requestAnimationFrame(gameLoop);
-        }
-
-        function checkCollision(player, obstacle) {
-            const px = player.position.x;
-            const py = player.position.y;
-            const pz = player.position.z;
-            
-            const ox = obstacle.position.x;
-            const oy = obstacle.position.y;
-            const oz = obstacle.position.z;
-
-            return Math.abs(px - ox) < 1 &&
-                   Math.abs(py - oy) < 1 &&
-                   Math.abs(pz - oz) < 0.5;
-        }
-
-        function gameOver(won) {
-            gameRunning = false;
-            stopLevelMusic();
-            
-            const progress = Math.floor((distanceTraveled / levelLength) * 100);
-            
-            if (won) {
-                currentLevel.progress = 100;
-                document.getElementById('gameOverTitle').textContent = '🎉 ¡Nivel Completado!';
-            } else {
-                if (progress > currentLevel.progress) {
-                    currentLevel.progress = progress;
+                
+                const level = myLevels[levelToPublish];
+                
+                if (!level) {
+                    throw new Error('No se encontró el nivel');
                 }
-                document.getElementById('gameOverTitle').textContent = '💥 ¡Fallaste!';
+                
+                const difficulty = document.getElementById('publishDifficulty').value || '😊';
+                
+                if (!firebaseReady || !database) {
+                    throw new Error('Firebase no está conectado');
+                }
+                
+                // Crear datos base simples
+                const baseData = {
+                    name: level.name || 'Nivel sin nombre',
+                    difficulty: difficulty,
+                    speed: 0.15,
+                    publishedAt: Date.now(),
+                    author: 'Jugador'
+                };
+                
+                // Añadir obstáculos solo si existen
+                if (level.obstacles && level.obstacles.length > 0) {
+                    baseData.obstacles = level.obstacles.map(obs => ({
+                        type: obs.type || 'spike',
+                        x: obs.x || 0,
+                        y: obs.y || 0,
+                        width: obs.width || 40,
+                        height: obs.height || 40
+                    }));
+                } else {
+                    baseData.obstacles = [];
+                }
+                
+                // Añadir monedas solo si existen
+                if (level.coinPositions && level.coinPositions.length > 0) {
+                    baseData.coinPositions = level.coinPositions.map(c => c || 0);
+                } else {
+                    baseData.coinPositions = [];
+                }
+                
+                // Limpiar cualquier null que pueda existir
+                const publishData = removeNulls(baseData);
+                
+                console.log('📤 Datos limpios:', publishData);
+                console.log('📊 JSON:', JSON.stringify(publishData));
+                
+                // Método más básico: convertir a JSON string y parsearlo
+                const jsonStr = JSON.stringify(publishData);
+                const cleanData = JSON.parse(jsonStr);
+                
+                // Escribir directamente con set() en un nuevo nodo
+                console.log('🔥 Creando referencia...');
+                const newRef = database.ref('published-levels').push();
+                console.log('📝 ID generado:', newRef.key);
+                
+                console.log('💾 Guardando datos...');
+                
+                try {
+                    await newRef.set(cleanData);
+                    console.log('✅ Publicado exitosamente con ID:', newRef.key);
+                    
+                    document.getElementById('overlay').style.display = 'none';
+                    document.getElementById('publishModal').style.display = 'none';
+                    
+                    alert('¡Nivel publicado exitosamente en Firebase! 🎉\n\nID: ' + newRef.key + '\n\nYa está disponible para todos.');
+                    
+                } catch (setError) {
+                    console.error('⚠️ Error de permisos Firebase:', setError);
+                    console.warn('📁 Guardando localmente como alternativa...');
+                    
+                    // Guardar en localStorage como alternativa
+                    cleanData.id = newRef.key;
+                    const published = JSON.parse(localStorage.getItem('publishedLevels') || '[]');
+                    published.push(cleanData);
+                    localStorage.setItem('publishedLevels', JSON.stringify(published));
+                    
+                    document.getElementById('overlay').style.display = 'none';
+                    document.getElementById('publishModal').style.display = 'none';
+                    
+                    alert('⚠️ No se pudo publicar en Firebase (problema de permisos)\n\n✅ Nivel guardado LOCALMENTE\n\nPara compartirlo online, configura los permisos de Firebase:\n\nRealtime Database → Rules → {".read": true, ".write": true}');
+                    
+                    loadPublishedLevels();
+                }
+                
+            } catch (error) {
+                console.error('❌ Error:', error);
+                console.error('Mensaje:', error.message);
+                console.error('Tipo:', typeof error);
+                console.error('Completo:', JSON.stringify(error, null, 2));
+                
+                document.getElementById('overlay').style.display = 'none';
+                document.getElementById('publishModal').style.display = 'none';
+                
+                alert('Error al publicar: ' + error.message);
+            }
+        };
+
+        document.getElementById('cancelPublish').onclick = () => {
+            document.getElementById('overlay').style.display = 'none';
+            document.getElementById('publishModal').style.display = 'none';
+        };
+
+        let levelToRename = null;
+
+        window.renameLevel = (index) => {
+            levelToRename = index;
+            const myLevels = JSON.parse(localStorage.getItem('myLevels') || '[]');
+            document.getElementById('renameInput').value = myLevels[index].name;
+            document.getElementById('overlay').style.display = 'block';
+            document.getElementById('renameModal').style.display = 'block';
+        };
+
+        document.getElementById('confirmRename').onclick = () => {
+            const newName = document.getElementById('renameInput').value.trim();
+            if (newName) {
+                const myLevels = JSON.parse(localStorage.getItem('myLevels') || '[]');
+                myLevels[levelToRename].name = newName;
+                localStorage.setItem('myLevels', JSON.stringify(myLevels));
+                loadMyLevels();
+            }
+            document.getElementById('overlay').style.display = 'none';
+            document.getElementById('renameModal').style.display = 'none';
+        };
+
+        document.getElementById('cancelRename').onclick = () => {
+            document.getElementById('overlay').style.display = 'none';
+            document.getElementById('renameModal').style.display = 'none';
+        };
+
+        document.getElementById('createNewLevel').onclick = () => {
+            const myLevels = JSON.parse(localStorage.getItem('myLevels') || '[]');
+            let count = myLevels.length + 1;
+            let newName = `Nivel ${count}`;
+            
+            while (myLevels.some(l => l.name === newName)) {
+                count++;
+                newName = `Nivel ${count}`;
             }
             
-            document.getElementById('gameOverProgress').textContent = `Progreso: ${progress}%`;
-            document.getElementById('gameOver').style.display = 'block';
+            const newLevel = {
+                name: newName,
+                speed: 0.15,
+                obstacles: [],
+                coinPositions: []
+            };
+            
+            myLevels.push(newLevel);
+            localStorage.setItem('myLevels', JSON.stringify(myLevels));
+            
+            editLevel(myLevels.length - 1);
+        };
+
+        function renderEditor() {
+            const canvas = document.getElementById('editorCanvas');
+            canvas.querySelectorAll('.placed-obstacle, .placed-coin').forEach(el => el.remove());
+            
+            editorState.placedObjects.forEach((obj, i) => {
+                const el = document.createElement('div');
+                el.className = obj.type === 'coin' ? 'placed-coin' : `placed-obstacle ${obj.type}`;
+                el.style.left = obj.x + 'px';
+                el.style.bottom = obj.y + 'px';
+                el.textContent = obj.type === 'spike' ? '▲' : (obj.type === 'block' ? '■' : '🪙');
+                el.draggable = true;
+                el.dataset.index = i;
+                
+                el.ondragstart = (e) => {
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', i);
+                };
+                
+                el.ondblclick = () => {
+                    editorState.placedObjects.splice(i, 1);
+                    renderEditor();
+                };
+                
+                canvas.appendChild(el);
+            });
         }
 
-        document.getElementById('restartBtn').addEventListener('click', () => {
-            document.getElementById('gameOver').style.display = 'none';
-            const container = document.getElementById('gameCanvas');
-            container.innerHTML = '';
-            playLevelMusic(currentLevel.music);
-            initGame();
+        document.querySelectorAll('.palette-item').forEach(item => {
+            item.onclick = () => {
+                editorState.selectedType = item.dataset.type;
+                document.querySelectorAll('.palette-item').forEach(i => i.style.border = 'none');
+                item.style.border = '3px solid #667eea';
+            };
         });
 
-        document.getElementById('menuReturnBtn').addEventListener('click', () => {
-            document.getElementById('gameOver').style.display = 'none';
-            document.getElementById('gameCanvas').style.display = 'none';
-            document.getElementById('gameUI').style.display = 'none';
-            document.getElementById('levelSelector').style.display = 'flex';
+        document.getElementById('editorCanvas').onclick = (e) => {
+            if (!editorState.selectedType || e.target.classList.contains('placed-obstacle') || 
+                e.target.classList.contains('placed-coin') || e.target.classList.contains('palette-item')) {
+                return;
+            }
             
-            stopLevelMusic();
-            playMenuMusic();
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = e.clientX - rect.left + e.currentTarget.scrollLeft;
+            const y = rect.bottom - e.clientY;
             
-            // Actualizar tarjeta del nivel
-            const cards = document.querySelectorAll('.level-card');
-            const card = cards[currentLevelIndex];
-            const progressFill = card.querySelector('.progress-fill');
-            progressFill.style.width = currentLevel.progress + '%';
-            progressFill.textContent = currentLevel.progress + '%';
-        });
+            const obj = {
+                type: editorState.selectedType,
+                x: Math.round(x / 50) * 50,
+                y: Math.max(0, Math.round(y / 50) * 50),
+                width: editorState.selectedType === 'coin' ? 30 : (editorState.selectedType === 'spike' ? 40 : 50),
+                height: editorState.selectedType === 'coin' ? 30 : (editorState.selectedType === 'spike' ? 40 : 50)
+            };
+            
+            editorState.placedObjects.push(obj);
+            renderEditor();
+        };
 
-        // Control de salto con teclado
-        document.addEventListener('keydown', (e) => {
-            if ((e.code === 'Space' || e.code === 'ArrowUp') && gameRunning) {
-                isKeyDown = true;
+        document.getElementById('clearAll').onclick = () => {
+            if (confirm('¿Seguro que quieres eliminar todos los objetos?')) {
+                editorState.placedObjects = [];
+                renderEditor();
             }
-        });
+        };
 
-        document.addEventListener('keyup', (e) => {
-            if (e.code === 'Space' || e.code === 'ArrowUp') {
-                isKeyDown = false;
+        document.getElementById('saveLevel').onclick = () => {
+            const name = document.getElementById('editorLevelName').value.trim() || 'Nivel sin nombre';
+            const myLevels = JSON.parse(localStorage.getItem('myLevels') || '[]');
+            
+            const levelData = {
+                name,
+                speed: 0.15,
+                obstacles: editorState.placedObjects.filter(o => o.type !== 'coin'),
+                coinPositions: editorState.placedObjects.filter(o => o.type === 'coin').map(c => c.x)
+            };
+            
+            if (editorState.currentLevel && editorState.currentLevel.index !== undefined) {
+                myLevels[editorState.currentLevel.index] = levelData;
+            } else {
+                myLevels.push(levelData);
             }
-        });
+            
+            localStorage.setItem('myLevels', JSON.stringify(myLevels));
+            alert('¡Nivel guardado!');
+        };
 
-        // Control de salto con mouse
-        document.addEventListener('mousedown', (e) => {
-            if (gameRunning && e.target.tagName !== 'BUTTON') {
-                isMouseDown = true;
-            }
-        });
+        document.getElementById('testLevel').onclick = () => {
+            const name = document.getElementById('editorLevelName').value.trim() || 'Nivel de prueba';
+            const testLevel = {
+                name,
+                speed: 0.15,
+                obstacles: editorState.placedObjects.filter(o => o.type !== 'coin'),
+                coinPositions: editorState.placedObjects.filter(o => o.type === 'coin').map(c => c.x),
+                difficulty: '🔧',
+                coins: 0,
+                progress: 0
+            };
+            
+            document.getElementById('levelEditor').style.display = 'none';
+            playCustomLevel(testLevel);
+        };
 
-        document.addEventListener('mouseup', () => {
-            isMouseDown = false;
-        });
+        document.getElementById('exitEditor').onclick = () => {
+            document.getElementById('levelEditor').style.display = 'none';
+            document.getElementById('editorHub').style.display = 'flex';
+            loadMyLevels();
+        };
 
-        // Control de salto con touch (móviles)
-        document.addEventListener('touchstart', (e) => {
-            if (gameRunning && e.target.tagName !== 'BUTTON') {
-                e.preventDefault();
-                isMouseDown = true;
-            }
-        }, { passive: false });
+        document.getElementById('settingsBtn').onclick = () => {
+            document.getElementById('overlay').style.display = 'block';
+            document.getElementById('settingsModal').style.display = 'block';
+        };
 
-        document.addEventListener('touchend', (e) => {
-            if (gameRunning) {
-                e.preventDefault();
-                isMouseDown = false;
-            }
-        }, { passive: false });
+        document.getElementById('closeSettings').onclick = () => {
+            document.getElementById('overlay').style.display = 'none';
+            document.getElementById('settingsModal').style.display = 'none';
+        };
 
-        // Responsive
-        window.addEventListener('resize', () => {
-            if (camera && renderer) {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
-            }
-        });
+        document.getElementById('creditsBtn').onclick = () => {
+            document.getElementById('overlay').style.display = 'block';
+            document.getElementById('creditsModal').style.display = 'block';
+        };
 
-        // Inicializar
-        createLevelCards();
-        
-        // Reproducir música del menú al cargar
-        window.addEventListener('load', () => {
-            playMenuMusic();
-        });
-        
-        // Permitir reproducir música con cualquier interacción del usuario
-        document.body.addEventListener('click', () => {
-            if (document.getElementById('menu').style.display !== 'none') {
-                playMenuMusic();
-            }
-        }, { once: true });
-        
-const firebaseConfig = {
-  apiKey: "AIzaSyBp5c5G0lb_t5mFoK49CXfkLbWlmnRBtfo",
-  authDomain: "cheometry-dash.firebaseapp.com",
-  projectId: "cheometry-dash",
-  storageBucket: "cheometry-dash.firebasestorage.app",
-  messagingSenderId: "882791750468",
-  appId: "1:882791750468:web:c5c19b5d6d46d2430e9511",
-  measurementId: "G-K9BPCEWEJZ"
-};
+        document.getElementById('closeCredits').onclick = () => {
+            document.getElementById('overlay').style.display = 'none';
+            document.getElementById('creditsModal').style.display = 'none';
+        };
 
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
-
-// login anonimo para publicar
-auth.signInAnonymously().catch(err => console.warn('Auth anon error', err));
-
-/* ------------------------
-   LOCALSTORAGE - claves
-   ------------------------ */
-const LS_KEY = 'cheometry_data_v1'; // guarda niveles locales y progreso
-const LS_COINS = 'cheometry_coins_v1';
-
-/* ------------------------
-   Inicializar guardado de niveles (si no existe)
-   ------------------------ */
-function loadLocalData() {
-  const raw = localStorage.getItem(LS_KEY);
-  if (raw) {
-    try {
-      const parsed = JSON.parse(raw);
-      // combinar progresos con levels existentes (match por name)
-      parsed.levels?.forEach(saved => {
-        const lvl = levels.find(l => l.name === saved.name);
-        if (lvl) {
-          lvl.progress = saved.progress ?? lvl.progress;
-          lvl.coins = saved.coins ?? lvl.coins;
-          // permitir override de parámetros si guardaste edición
-          if (saved.custom) Object.assign(lvl, saved.custom);
-        } else {
-          // si hay niveles locales que no existen en la lista original, añadirlos
-          levels.push(saved);
-        }
-      });
-    } catch (e) { console.error('parse ls error', e); }
-  } else {
-    // si no hay LS, asegurarnos que todos los niveles tengan coins/progress
-    saveLocalData();
-  }
-
-  // monedas globales
-  const coinsRaw = localStorage.getItem(LS_COINS);
-  if (!coinsRaw) localStorage.setItem(LS_COINS, '0');
-}
-
-function saveLocalData() {
-  const data = {
-    levels: levels.map(l => ({
-      name: l.name,
-      difficulty: l.difficulty,
-      coins: l.coins ?? 0,
-      progress: l.progress ?? 0,
-      speed: l.speed,
-      obstacles: l.obstacles,
-      music: l.music,
-      custom: {
-        // guarda sólo campos editables por el usuario
-        speed: l.speed,
-        obstacles: l.obstacles
-      }
-    }))
-  };
-  localStorage.setItem(LS_KEY, JSON.stringify(data));
-}
-
-/* ------------------------
-   Asegurar coins en todos los niveles
-   ------------------------ */
-levels.forEach(l => {
-  if (typeof l.coins === 'undefined') l.coins = 0;
-  if (typeof l.progress === 'undefined') l.progress = 0;
-});
-
-/* cargar LS al inicio */
-loadLocalData();
-
-/* ------------------------
-   Editor UI: wiring
-   ------------------------ */
-function initEditorUI() {
-  const editorPanel = document.getElementById('editorPanel');
-  const editBtn = document.getElementById('editBtn');
-  const closeEditor = document.getElementById('closeEditor');
-  const yourList = document.getElementById('yourLevelsList');
-  const searchInput = document.getElementById('searchInput');
-  const createNewLevelBtn = document.getElementById('createNewLevelBtn');
-  const saveLevelBtn = document.getElementById('saveLevelBtn');
-  const testLevelBtn = document.getElementById('testLevelBtn');
-  const publishLevelBtn = document.getElementById('publishLevelBtn');
-  const cloneLevelBtn = document.getElementById('cloneLevelBtn');
-  const editorLevelName = document.getElementById('editorLevelName');
-  const editorDifficulty = document.getElementById('editorDifficulty');
-  const editorLog = document.getElementById('editorLog');
-
-  let editingIndex = null;
-
-  // abrir editor
-  editBtn.addEventListener('click', () => {
-    editorPanel.style.display = 'block';
-    renderYourLevels();
-  });
-
-  // cerrar
-  closeEditor.addEventListener('click', () => {
-    editorPanel.style.display = 'none';
-  });
-
-  // crear nuevo nivel (inserta en array y guarda)
-  createNewLevelBtn.addEventListener('click', () => {
-    const newName = `Nuevo Nivel ${Date.now()}`;
-    const newLevel = {
-      name: newName,
-      difficulty: '😊',
-      coins: 0,
-      progress: 0,
-      speed: 0.15,
-      obstacles: 10,
-      music: ''
-    };
-    levels.push(newLevel);
-    saveLocalData();
-    renderYourLevels();
-    log('Nivel creado: ' + newName);
-  });
-
-  // buscar en la lista
-  searchInput.addEventListener('input', (e) => {
-    renderYourLevels(e.target.value);
-  });
-
-  // seleccionar nivel de la lista para editar / acciones
-  function renderYourLevels(filter = '') {
-    yourList.innerHTML = '';
-    const filtered = levels.filter(l => l.name.toLowerCase().includes(filter.toLowerCase()));
-    filtered.forEach((lvl, idx) => {
-      const el = document.createElement('div');
-      el.style.display = 'flex';
-      el.style.justifyContent = 'space-between';
-      el.style.alignItems = 'center';
-      el.style.padding = '8px';
-      el.style.borderBottom = '1px solid rgba(0,0,0,0.05)';
-      el.innerHTML = `
-        <div style="flex:1">
-          <div style="font-weight:600">${lvl.name}</div>
-          <div style="font-size:12px;color:#666">Dif: ${lvl.difficulty} · Monedas: ${lvl.coins} · Progreso: ${lvl.progress}%</div>
-        </div>
-        <div style="display:flex; gap:6px; margin-left:12px;">
-          <button class="play-from-list" data-idx="${levels.indexOf(lvl)}" style="padding:6px;border-radius:8px;border:none;cursor:pointer;">▶</button>
-          <button class="edit-from-list" data-idx="${levels.indexOf(lvl)}" style="padding:6px;border-radius:8px;border:none;cursor:pointer;">✎</button>
-          <button class="clone-from-list" data-idx="${levels.indexOf(lvl)}" style="padding:6px;border-radius:8px;border:none;cursor:pointer;">⧉</button>
-          <button class="publish-from-list" data-idx="${levels.indexOf(lvl)}" style="padding:6px;border-radius:8px;border:none;cursor:pointer;">☁</button>
-        </div>
-      `;
-      yourList.appendChild(el);
-    });
-
-    // añadir listeners dinámicos
-    $$('.play-from-list', yourList).forEach(btn => {
-      btn.onclick = () => {
-        const i = parseInt(btn.dataset.idx);
-        // abrir y jugar nivel desde la UI principal
-        startLevel(i);
-        editorPanel.style.display = 'none';
-      };
-    });
-
-    $$('.edit-from-list', yourList).forEach(btn => {
-      btn.onclick = () => {
-        const i = parseInt(btn.dataset.idx);
-        editingIndex = i;
-        const lvl = levels[i];
-        editorLevelName.value = lvl.name;
-        editorDifficulty.value = lvl.difficulty;
-        log('Editando ' + lvl.name);
-      };
-    });
-
-    $$('.clone-from-list', yourList).forEach(btn => {
-      btn.onclick = () => {
-        const i = parseInt(btn.dataset.idx);
-        cloneLevel(i);
-      };
-    });
-
-    $$('.publish-from-list', yourList).forEach(btn => {
-      btn.onclick = () => {
-        const i = parseInt(btn.dataset.idx);
-        openPublishDialog(i);
-      };
-    });
-  }
-
-  // guardar cambios del editor
-  saveLevelBtn.addEventListener('click', () => {
-    if (editingIndex === null) {
-      log('Selecciona un nivel para guardar (pulsa ✎ en la lista).');
-      return;
-    }
-    const lvl = levels[editingIndex];
-    lvl.name = editorLevelName.value || lvl.name;
-    lvl.difficulty = editorDifficulty.value || lvl.difficulty;
-    saveLocalData();
-    renderYourLevels();
-    log('Guardado: ' + lvl.name);
-  });
-
-  // testear (abre nivel en modo test)
-  testLevelBtn.addEventListener('click', () => {
-    if (editingIndex === null) { log('Selecciona un nivel primero.'); return; }
-    const i = editingIndex;
-    startLevel(i);
-    editorPanel.style.display = 'none';
-  });
-
-  // clonar
-  cloneLevelBtn.addEventListener('click', () => {
-    if (editingIndex === null) { log('Selecciona un nivel para clonar.'); return; }
-    cloneLevel(editingIndex);
-  });
-
-  function cloneLevel(idx) {
-    const base = levels[idx];
-    // generar nombre CloneX
-    const baseName = base.name;
-    let n = 1;
-    let newName = `${baseName} Clone (${n})`;
-    while (levels.some(l => l.name === newName)) {
-      n++;
-      newName = `${baseName} Clone (${n})`;
-    }
-    const clone = JSON.parse(JSON.stringify(base));
-    clone.name = newName;
-    clone.progress = 0;
-    clone.coins = 0;
-    levels.push(clone);
-    saveLocalData();
-    renderYourLevels();
-    log('Clonado: ' + newName);
-  }
-
-  // publicar: abrir diálogo de emoji/dificultad -> subir a Firestore
-  function openPublishDialog(idx) {
-    const lvl = levels[idx];
-    const emoji = prompt('Elige emoji de dificultad para publicar (por ejemplo 😊, 😐, 😠, 😱, 👹)', lvl.difficulty);
-    if (emoji === null) { log('Publicación cancelada'); return; }
-    lvl.difficulty = emoji;
-    publishLevelToFirebase(idx);
-  }
-
-  function publishLevelToFirebase(idx) {
-    const lvl = levels[idx];
-    const payload = {
-      name: lvl.name,
-      difficulty: lvl.difficulty,
-      speed: lvl.speed,
-      obstacles: lvl.obstacles,
-      music: lvl.music || '',
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      author: auth.currentUser ? auth.currentUser.uid : 'anonymous'
-    };
-    db.collection('public_levels').add(payload)
-      .then(ref => {
-        log('Publicado en Firebase: ' + lvl.name + ' (id: ' + ref.id + ')');
-      })
-      .catch(err => {
-        log('Error publicando: ' + err.message);
-      });
-  }
-
-  function openEditorForIndex(i) {
-    editingIndex = i;
-    const lvl = levels[i];
-    editorLevelName.value = lvl.name;
-    editorDifficulty.value = lvl.difficulty;
-    editorPanel.style.display = 'block';
-    renderYourLevels();
-  }
-
-  function log(msg) {
-    const now = new Date().toLocaleTimeString();
-    editorLog.innerHTML = `<div>[${now}] ${msg}</div>` + editorLog.innerHTML;
-  }
-
-  // Init render
-  renderYourLevels();
-
-  // Exponer funciones (útil para event binding fuera)
-  window.openEditorForIndex = openEditorForIndex;
-  window.renderYourLevels = renderYourLevels;
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  initEditorUI();
-});
-
-/* ------------------------
-   INTEGRACIÓN: actualizar progreso/monedas -> guardar en LS
-   Llamar saveLocalData() cada vez que se actualice currentLevel.progress o currency
-   ------------------------ */
-
-function awardCoinsForLevel(levelIndex, coinsToAdd=1) {
-  levels[levelIndex].coins = (levels[levelIndex].coins || 0) + coinsToAdd;
-  // persistir monedas por nivel y global
-  saveLocalData();
-  let total = parseInt(localStorage.getItem(LS_COINS) || '0', 10);
-  total += coinsToAdd;
-  localStorage.setItem(LS_COINS, String(total));
-}
-
-/* Modifica tu lógica actual en gameOver() y en la UI donde actualices progreso:
-   - cuando haya progreso nuevo: asigna currentLevel.progress = nuevoValor; saveLocalData();
-   - cuando recojas monedas: awardCoinsForLevel(currentLevelIndex, cantidad)
-*/
-
-/* Ejemplo: al completar nivel en gameOver(true) ya estabas poniendo currentLevel.progress = 100;
-   añade saveLocalData() justo después */
-
+        // Iniciar el juego
+        console.log('Cheometry Dash cargado correctamente');
     </script>
 </body>
-</html>
+    </html>
