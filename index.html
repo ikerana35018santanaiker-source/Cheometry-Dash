@@ -875,6 +875,11 @@
             transform: scale(1.15);
         }
 
+        /* Avatar por defecto en la esquina inferior izquierda */
+        .avatar-option:last-child {
+            grid-column: 1;
+        }
+
         .file-upload {
             margin-top: 10px;
             padding: 10px;
@@ -1054,7 +1059,6 @@
             <div class="form-group">
                 <label>Elige tu Avatar</label>
                 <div class="avatar-selector">
-                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Default" class="avatar-option selected" data-avatar="default">
                     <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" class="avatar-option" data-avatar="avatar1">
                     <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka" class="avatar-option" data-avatar="avatar2">
                     <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Max" class="avatar-option" data-avatar="avatar3">
@@ -1062,6 +1066,7 @@
                     <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Charlie" class="avatar-option" data-avatar="avatar5">
                     <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Mia" class="avatar-option" data-avatar="avatar6">
                     <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Leo" class="avatar-option" data-avatar="avatar7">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Default" class="avatar-option selected" data-avatar="default">
                 </div>
                 <div class="file-upload">
                     <label for="customAvatar">📁 O sube tu propia imagen</label>
@@ -1086,7 +1091,6 @@
         <div class="form-group">
             <label>Cambiar Avatar</label>
             <div class="avatar-selector">
-                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Default" class="avatar-option profile-avatar" data-avatar="default">
                 <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" class="avatar-option profile-avatar" data-avatar="avatar1">
                 <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka" class="avatar-option profile-avatar" data-avatar="avatar2">
                 <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Max" class="avatar-option profile-avatar" data-avatar="avatar3">
@@ -1094,6 +1098,7 @@
                 <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Charlie" class="avatar-option profile-avatar" data-avatar="avatar5">
                 <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Mia" class="avatar-option profile-avatar" data-avatar="avatar6">
                 <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Leo" class="avatar-option profile-avatar" data-avatar="avatar7">
+                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Default" class="avatar-option profile-avatar" data-avatar="default">
             </div>
             <div class="file-upload">
                 <label for="updateAvatar">📁 O sube tu propia imagen</label>
